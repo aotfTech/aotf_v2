@@ -185,16 +185,34 @@ export async function GET() {
       ),
     ]);
 
-    // Check if the user has a paid payment but onboardingCompleted is still false
-    let paymentPaidButNotOnboarded = false;
-    if (userDoc && !userDoc.onboardingCompleted && !userDoc.paymentCompleted) {
-      const paidPayment = await Payment.findOne({
-        clerkId,
-        status: "paid",
-      }).lean();
-      if (paidPayment) {
-        paymentPaidButNotOnboarded = true;
-      }
+    // Reconcile successful payments that may have been persisted before the
+    // corresponding User update completed. This also repairs older records
+    // where paymentCompleted is false despite a paid payment record.
+    const paidPayment = userDoc
+      ? await Payment.findOne({ clerkId, status: "paid" })
+          .sort({ paidAt: -1, createdAt: -1 })
+          .lean()
+      : null;
+    const paymentPaidButNotOnboarded = Boolean(
+      userDoc && paidPayment && !userDoc.onboardingCompleted && !userDoc.paymentCompleted,
+    );
+
+    if (userDoc && paidPayment && !userDoc.paymentCompleted) {
+      await User.updateOne(
+        { _id: userDoc._id },
+        {
+          "plan.current": paidPayment.toPlan,
+          "plan.hasTuitionAccess": true,
+          "plan.hasCandidateAccess": paidPayment.toPlan === "teacher_candidate",
+          "plan.activatedAt": paidPayment.paidAt ?? new Date(),
+          onboardingCompleted: true,
+          paymentCompleted: true,
+          registrationPaymentId: paidPayment._id,
+          role: paidPayment.toPlan,
+        },
+      );
+      userDoc.paymentCompleted = true;
+      userDoc.onboardingCompleted = true;
     }
 
     return NextResponse.json({

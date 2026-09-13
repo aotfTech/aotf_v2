@@ -75,6 +75,21 @@ export async function POST(req: Request) {
 
     // Idempotency: if already paid, return success
     if (payment.status === "paid") {
+      // Repair the user if the payment was persisted before the prior user
+      // update completed.
+      await User.updateOne(
+        { clerkId },
+        {
+          "plan.current": toPlan,
+          "plan.hasTuitionAccess": true,
+          "plan.hasCandidateAccess": toPlan === "teacher_candidate",
+          "plan.activatedAt": payment.paidAt ?? new Date(),
+          onboardingCompleted: true,
+          paymentCompleted: true,
+          registrationPaymentId: payment._id,
+          role: toPlan,
+        },
+      );
       console.log(
         `[verify-payment] Payment ${razorpay_order_id} already verified`,
       );
@@ -96,6 +111,7 @@ export async function POST(req: Request) {
         "plan.hasCandidateAccess": toPlan === "teacher_candidate",
         "plan.activatedAt": new Date(),
         onboardingCompleted: true,
+        paymentCompleted: true,
         registrationPaymentId: payment._id,
         role: toPlan,
       },
@@ -112,6 +128,7 @@ export async function POST(req: Request) {
     await client.users.updateUserMetadata(clerkId, {
       publicMetadata: {
         onboardingCompleted: true,
+        paymentCompleted: true,
         role: toPlan,
       },
     });

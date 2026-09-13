@@ -1,6 +1,7 @@
 "use client";
 import React, {
   useState,
+  useEffect,
   Children,
   useRef,
   useLayoutEffect,
@@ -14,6 +15,8 @@ import { ArrowLeft, ArrowRight, CheckCheck } from "lucide-react";
 interface StepperProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   initialStep?: number;
+  /** Controlled current step. When provided, the parent owns navigation state. */
+  currentStep?: number;
   onStepChange?: (step: number) => void;
   onFinalStepCompleted?: () => void;
   validateStep?: (step: number) => boolean;
@@ -39,6 +42,7 @@ interface StepperProps extends HTMLAttributes<HTMLDivElement> {
 export default function Stepper({
   children,
   initialStep = 1,
+  currentStep: controlledStep,
   onStepChange = () => {},
   onFinalStepCompleted = () => {},
   validateStep,
@@ -56,8 +60,13 @@ export default function Stepper({
   renderStepIndicator,
   ...rest
 }: StepperProps) {
-  const [currentStep, setCurrentStep] = useState<number>(initialStep);
+  const [internalStep, setInternalStep] = useState<number>(initialStep);
+  const currentStep = controlledStep ?? internalStep;
   const [direction, setDirection] = useState<number>(0);
+
+  useEffect(() => {
+    if (controlledStep !== undefined) setInternalStep(controlledStep);
+  }, [controlledStep]);
   const stepsArray = Children.toArray(children);
   const totalSteps = stepsArray.length;
   const isCompleted = currentStep > totalSteps;
@@ -77,7 +86,7 @@ export default function Stepper({
   };
 
   const updateStep = (newStep: number) => {
-    setCurrentStep(newStep);
+    if (controlledStep === undefined) setInternalStep(newStep);
     if (newStep > totalSteps) {
       onFinalStepCompleted();
     } else {

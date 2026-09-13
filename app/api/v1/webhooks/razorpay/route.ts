@@ -192,6 +192,21 @@ async function handlePaymentSuccess(paymentId: string, orderId: string | null) {
 
   // Idempotency: already processed
   if (payment.status === "paid") {
+    // Repair the user if the payment was persisted before the prior user
+    // update completed.
+    await User.updateOne(
+      { _id: payment.userId },
+      {
+        "plan.current": payment.toPlan,
+        "plan.hasTuitionAccess": true,
+        "plan.hasCandidateAccess": payment.toPlan === "teacher_candidate",
+        "plan.activatedAt": payment.paidAt ?? new Date(),
+        onboardingCompleted: true,
+        paymentCompleted: true,
+        registrationPaymentId: payment._id,
+        role: payment.toPlan,
+      },
+    );
     console.log(
       `[razorpay-webhook] Payment for order ${orderId} already marked paid`,
     );
@@ -213,6 +228,7 @@ async function handlePaymentSuccess(paymentId: string, orderId: string | null) {
       "plan.hasCandidateAccess": toPlan === "teacher_candidate",
       "plan.activatedAt": new Date(),
       onboardingCompleted: true,
+      paymentCompleted: true,
       registrationPaymentId: payment._id,
       role: toPlan,
     },
@@ -229,6 +245,7 @@ async function handlePaymentSuccess(paymentId: string, orderId: string | null) {
   await client.users.updateUserMetadata(payment.clerkId, {
     publicMetadata: {
       onboardingCompleted: true,
+      paymentCompleted: true,
       role: toPlan,
     },
   });
@@ -248,6 +265,13 @@ async function handlePaymentFailed(paymentId: string, orderId: string | null) {
   payment.status = "failed";
   payment.providerPaymentId = paymentId;
   await payment.save();
+
+  // Keep the user explicitly unpaid after a failed attempt, without
+  // overwriting a different successful payment that may have completed later.
+  await User.updateOne(
+    { _id: payment.userId, registrationPaymentId: { $ne: payment._id } },
+    { paymentCompleted: false },
+  );
 
   console.log(`[razorpay-webhook] Payment failed for order ${orderId}`);
 }
@@ -271,6 +295,7 @@ async function handleRefundCreated(orderId: string | null) {
       "plan.hasCandidateAccess": false,
       "plan.activatedAt": null,
       onboardingCompleted: false,
+      paymentCompleted: false,
       registrationPaymentId: null,
       role: "teacher",
     },
@@ -280,6 +305,7 @@ async function handleRefundCreated(orderId: string | null) {
   await client.users.updateUserMetadata(payment.clerkId, {
     publicMetadata: {
       onboardingCompleted: false,
+      paymentCompleted: false,
       role: "teacher",
     },
   });
@@ -333,6 +359,7 @@ async function handleDisputeClosed(rawPayload: PayloadMap) {
         "plan.hasCandidateAccess": false,
         "plan.activatedAt": null,
         onboardingCompleted: false,
+        paymentCompleted: false,
         registrationPaymentId: null,
         role: "teacher",
       },
@@ -342,6 +369,7 @@ async function handleDisputeClosed(rawPayload: PayloadMap) {
     await client.users.updateUserMetadata(payment.clerkId, {
       publicMetadata: {
         onboardingCompleted: false,
+        paymentCompleted: false,
         role: "teacher",
       },
     });
