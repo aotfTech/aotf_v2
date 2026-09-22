@@ -141,7 +141,7 @@ export async function PATCH(req: Request) {
       }
       const uniqueSubjects = Array.from(new Set(subjects));
       const count = await Subject.countDocuments({
-        key: { $in: uniqueSubjects },
+        $or: uniqueSubjects.map((key) => ({ key })),
       });
       if (count !== uniqueSubjects.length) {
         return NextResponse.json({ error: "One or more subjects are invalid" }, { status: 400 });
@@ -178,7 +178,7 @@ export async function PATCH(req: Request) {
     const profileSubjectKeys = profile.subjects ?? [];
     const subjectDocs = profileSubjectKeys.length
       ? await Subject.find(
-          { key: { $in: profileSubjectKeys } },
+          { $or: profileSubjectKeys.map((key) => ({ key })) },
           { key: 1, label: 1 },
         ).lean()
       : [];

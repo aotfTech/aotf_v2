@@ -115,6 +115,9 @@ export const listPostsSchema = z.object({
   classType: z.enum([...CLASS_TYPES, "all"] as const).optional(),
   minBudget: z.coerce.number().int().min(0).optional(),
   maxBudget: z.coerce.number().int().min(0).optional(),
+  date: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 });
 
 export type ListPostsInput = z.infer<typeof listPostsSchema>;

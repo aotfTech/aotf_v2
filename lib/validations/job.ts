@@ -208,6 +208,9 @@ export const listJobsSchema = z.object({
     .string()
     .max(200, "Search term must be at most 200 characters")
     .optional(),
+  date: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 });
 
 export type ListJobsInput = z.infer<typeof listJobsSchema>;

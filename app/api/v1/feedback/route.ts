@@ -76,8 +76,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (
-      !currentAdmin.isActive ||
-      !currentAdmin.permissions.canHandleFeedbacks
+      (!currentAdmin.isActive && (currentAdmin as any).status !== "ACTIVE") ||
+      !(currentAdmin.permissions?.canHandleFeedbacks || (metadata?.permissions as Record<string, boolean>)?.canHandleFeedbacks || metadata?.canHandleFeedbacks)
     ) {
       return NextResponse.json(
         { error: "You do not have permission to view feedbacks" },

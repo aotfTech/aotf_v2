@@ -177,6 +177,9 @@ export async function GET(request: NextRequest) {
       classType: searchParams.get("classType") ?? undefined,
       minBudget: searchParams.get("minBudget") ?? undefined,
       maxBudget: searchParams.get("maxBudget") ?? undefined,
+      date: searchParams.get("date") ?? undefined,
+      startDate: searchParams.get("startDate") ?? undefined,
+      endDate: searchParams.get("endDate") ?? undefined,
     });
 
     const result = await listPosts(input);

@@ -896,9 +896,9 @@ export default function SuperadminActivityLogs() {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         {/* Narrative */}
-                        <p className="text-sm font-medium text-default-800 leading-6 break-words">
+                        <div className="text-sm font-medium text-default-800 leading-6 break-words">
                           {buildNarrative(log)}
-                        </p>
+                        </div>
 
                         {/* Meta Information */}
                         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-default-500">

@@ -106,6 +106,7 @@ const Page = () => {
       const params = new URLSearchParams();
       if (filterStatus) params.set("status", filterStatus);
       if (debouncedSearch) params.set("search", debouncedSearch);
+      if (selectedDateChip) params.set("date", selectedDateChip);
       params.set("limit", "50");
 
       const res = await fetch(`/api/v1/jobs?${params.toString()}`);
@@ -122,7 +123,7 @@ const Page = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [filterStatus, debouncedSearch]);
+  }, [filterStatus, debouncedSearch, selectedDateChip]);
 
   useEffect(() => {
     fetchJobs();
@@ -147,16 +148,8 @@ const Page = () => {
       });
     }
 
-    // Filter by date chip (compares against createdAt)
-    if (selectedDateChip) {
-      filtered = filtered.filter((post) => {
-        if (!post.createdAt) return false;
-        return post.createdAt.slice(0, 10) === selectedDateChip;
-      });
-    }
-
     return filtered;
-  }, [posts, selectedYear, selectedMonth, selectedDay, selectedDateChip]);
+  }, [posts, selectedYear, selectedMonth, selectedDay]);
 
   const handleViewPost = (post: JobPost) =>
     router.push(`/admin/jobs/${post.id}`);

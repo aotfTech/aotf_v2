@@ -7,6 +7,7 @@ import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Spinner } from "@heroui/spinner";
+import { Pagination } from "@heroui/pagination";
 import AdminSearchBar, {
   FilterConfig,
 } from "@/components/admin/ui/AdminSearchBar";
@@ -774,7 +775,23 @@ const Page = () => {
     try {
       const params = new URLSearchParams();
       params.set("limit", pagination.limit.toString());
+      params.set("page", pagination.page.toString());
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (filterStatus) params.set("status", filterStatus);
+      if (selectedDateChip) params.set("date", selectedDateChip);
+      
+      if (dateRange?.start && dateRange?.end) {
+        const { start, end } = dateRange;
+        params.set(
+          "startDate",
+          `${start.year}-${String(start.month).padStart(2, "0")}-${String(start.day).padStart(2, "0")}`
+        );
+        params.set(
+          "endDate",
+          `${end.year}-${String(end.month).padStart(2, "0")}-${String(end.day).padStart(2, "0")}`
+        );
+      }
+      
       const res = await fetch(`/api/v1/posts?${params.toString()}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -799,6 +816,18 @@ const Page = () => {
     } finally {
       setIsLoading(false);
     }
+  }, [
+    searchQuery,
+    pagination.page,
+    pagination.limit,
+    filterStatus,
+    selectedDateChip,
+    dateRange,
+  ]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
   }, [searchQuery]);
 
   useEffect(() => {
@@ -814,8 +843,9 @@ const Page = () => {
   // Client-side filtering
   const filteredPosts = useMemo(() => {
     let filtered = [...posts];
-    if (filterStatus)
-      filtered = filtered.filter((p) => p.status === filterStatus);
+    // We moved filtering to the server for status, selectedDateChip, and dateRange.
+    // The individual selectedYear/Month/Day logic can remain client-side for now 
+    // or also be sent to server, but since they are part of the same UI, we leave the fallback here.
     if (selectedYear || selectedMonth || selectedDay) {
       filtered = filtered.filter((post) => {
         const dateStr = post.id.split("-")[1];
@@ -829,32 +859,6 @@ const Page = () => {
           (!selectedDay || day === parseInt(selectedDay))
         );
       });
-    }
-    if (dateRange?.start && dateRange?.end) {
-      filtered = filtered.filter((post) => {
-        const dateStr = post.id.split("-")[1];
-        if (!dateStr || dateStr.length < 6) return true;
-        const day = parseInt(dateStr.substring(0, 2));
-        const month = parseInt(dateStr.substring(2, 4));
-        const year = 2000 + parseInt(dateStr.substring(4, 6));
-        const postDate = new Date(year, month - 1, day);
-        const startDate = new Date(
-          dateRange.start.year,
-          dateRange.start.month - 1,
-          dateRange.start.day,
-        );
-        const endDate = new Date(
-          dateRange.end.year,
-          dateRange.end.month - 1,
-          dateRange.end.day,
-        );
-        return postDate >= startDate && postDate <= endDate;
-      });
-    }
-    if (selectedDateChip) {
-      filtered = filtered.filter(
-        (p) => p.createdAt?.slice(0, 10) === selectedDateChip,
-      );
     }
     return filtered;
   }, [
@@ -1037,6 +1041,18 @@ const Page = () => {
                   onGenerateInvoice={handleGenerateInvoice}
                 />
               ))}
+            </div>
+          )}
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex justify-center mt-6">
+              <Pagination
+                showControls
+                color="primary"
+                page={pagination.page}
+                total={pagination.totalPages}
+                onChange={(page) => setPagination(prev => ({ ...prev, page }))}
+              />
             </div>
           )}
         </div>

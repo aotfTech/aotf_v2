@@ -263,7 +263,7 @@ export async function getJobById(id: string): Promise<JobWithEnquiryReference> {
 export async function listJobs(input: ListJobsInput): Promise<PaginatedJobs> {
   await dbConnect();
 
-  const { status, page, limit, search } = input;
+  const { status, page, limit, search, date, startDate, endDate } = input;
 
   // Build filter
   const filter: Record<string, unknown> = {};
@@ -283,6 +283,24 @@ export async function listJobs(input: ListJobsInput): Promise<PaginatedJobs> {
       { location: searchRegex },
       { requiredQualification: searchRegex },
     ]);
+  }
+
+  if (date) {
+    const [year, month, day] = date.split("-").map(Number);
+    const start = new Date(`${date}T00:00:00.000+05:30`);
+    const end = new Date(`${date}T23:59:59.999+05:30`);
+    filter.createdAt = mongoose.trusted({ $gte: start, $lte: end });
+  } else if (startDate || endDate) {
+    const dateFilter: Record<string, Date> = {};
+    if (startDate) {
+      dateFilter.$gte = new Date(`${startDate}T00:00:00.000+05:30`);
+    }
+    if (endDate) {
+      dateFilter.$lte = new Date(`${endDate}T23:59:59.999+05:30`);
+    }
+    if (Object.keys(dateFilter).length > 0) {
+      filter.createdAt = mongoose.trusted(dateFilter);
+    }
   }
 
   const [jobs, total] = await Promise.all([

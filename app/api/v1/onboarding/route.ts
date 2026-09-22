@@ -117,24 +117,6 @@ export async function PATCH(req: Request) {
 
     await dbConnect();
 
-    let validatedSubjects: string[] | undefined;
-    if (subjects !== undefined) {
-      if (!Array.isArray(subjects) || subjects.length === 0 || subjects.length > 20) {
-        return NextResponse.json({ error: "Select at least one subject" }, { status: 400 });
-      }
-      if (!subjects.every((s) => typeof s === "string")) {
-        return NextResponse.json({ error: "Invalid subjects format" }, { status: 400 });
-      }
-      const uniqueSubjects = Array.from(new Set(subjects));
-      const count = await Subject.countDocuments({
-        key: { $in: uniqueSubjects },
-      });
-      if (count !== uniqueSubjects.length) {
-        return NextResponse.json({ error: "One or more subjects are invalid" }, { status: 400 });
-      }
-      validatedSubjects = uniqueSubjects;
-    }
-
     // Ensure User + Profile exist (self-heals if the Clerk webhook was delayed)
     const user = await ensureUserRecord(clerkId);
 
@@ -147,7 +129,6 @@ export async function PATCH(req: Request) {
     if (qualification !== undefined) updateFields.qualification = qualification;
     if (board !== undefined) updateFields.board = board;
     if (normalizedGender !== undefined) updateFields.gender = normalizedGender;
-    if (validatedSubjects !== undefined) updateFields.subjects = validatedSubjects;
     if (plan !== undefined) updateFields.plan = plan;
     // Refresh the 72-hour TTL on every save while payment hasn't happened
     updateFields.expiresAt = user.paymentCompleted
@@ -165,7 +146,6 @@ export async function PATCH(req: Request) {
     );
 
     const profileUpdate: Record<string, unknown> = {};
-    if (subjects !== undefined) profileUpdate.subjects = subjects;
     if (normalizedGender !== undefined) profileUpdate.gender = normalizedGender;
     if (Object.keys(profileUpdate).length > 0) {
       await Profile.updateOne({ clerkId }, { $set: profileUpdate });
@@ -182,8 +162,7 @@ export async function PATCH(req: Request) {
       !!onboardingDetails?.whatsapp &&
       !!onboardingDetails?.teachingExp &&
       !!onboardingDetails?.qualification &&
-      !!onboardingDetails?.board &&
-      (onboardingDetails?.subjects?.length ?? 0) > 0;
+      !!onboardingDetails?.board;
 
     let userDoc = await User.findOne({ clerkId });
     if (allRequiredFilled) {
@@ -248,6 +227,19 @@ export async function GET() {
       if (paidPayment) {
         paymentPaidButNotOnboarded = true;
       }
+    }
+
+    // Auto-fix: if all steps are completed but onboardingCompleted is false
+    if (
+      userDoc &&
+      !userDoc.onboardingCompleted &&
+      userDoc.detailsCompleted &&
+      userDoc.paymentCompleted &&
+      userDoc.whatsappGroupCompleted
+    ) {
+      userDoc.onboardingCompleted = true;
+      await userDoc.save();
+      void syncUserMetadataToClerk(clerkId);
     }
 
     return NextResponse.json({

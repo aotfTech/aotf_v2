@@ -38,6 +38,7 @@ export interface EditableProfileDetails {
 
 type ProfileUpdate = Omit<OnboardingStep1Values, "jobExp"> & {
   jobExp?: string;
+  subjects: string[];
 };
 
 interface EditProfileDetailsProps {
@@ -111,6 +112,10 @@ export default function EditProfileDetails({
     const result = onboardingStep1Schema.safeParse(form);
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Please check your details.");
+      return;
+    }
+    if (selectedSubjects.length === 0) {
+      setError("Please select at least one subject.");
       return;
     }
 

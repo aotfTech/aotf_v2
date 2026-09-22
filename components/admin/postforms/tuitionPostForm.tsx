@@ -1076,6 +1076,7 @@ export default function TuitionPostForm({
                           selectionMode="multiple"
                           label="Subjects"
                           placeholder="Select subjects"
+                          maxListboxHeight={400}
                           selectedKeys={new Set(student.subjects)}
                           onSelectionChange={(keys) => {
                             const vals = Array.from(keys) as string[];

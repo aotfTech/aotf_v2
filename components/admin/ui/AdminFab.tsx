@@ -27,6 +27,7 @@ import { addToast } from "@heroui/toast";
 import { Plus } from "lucide-react";
 import { reportClientError } from "@/lib/client-report-error";
 import { motion } from "motion/react";
+import { useAdminPermissions } from "@/lib/hooks/useAdminPermissions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,6 +61,8 @@ export default function AdminFab() {
     role: "teacher" as Role,
   });
   const [isCreating, setIsCreating] = useState(false);
+  const { hasPermission } = useAdminPermissions();
+
   // Pages that render their own FAB — suppress the global one
   if (SELF_MANAGED_FAB_PATHS.some((p) => pathname.startsWith(p))) return null;
 
@@ -76,6 +79,13 @@ export default function AdminFab() {
 
   // Don't render the FAB on unrelated pages
   if (!matched) return null;
+
+  // Check granular permissions for FAB rendering
+  if (matched.action === "tuition" && !hasPermission("canCreateTuitionPosts")) return null;
+  if (matched.action === "job" && !hasPermission("canCreateJobPosts")) return null;
+  if (matched.action === "ad" && !hasPermission("canManagePosts")) return null;
+  if (matched.action === "user" && !hasPermission("canManageUsers")) return null;
+
   const handleFab = () => {
     if (matched.action === "tuition") router.push("/admin/tuitions/create");
     else if (matched.action === "job") router.push("/admin/jobs/create");

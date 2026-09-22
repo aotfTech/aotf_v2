@@ -35,7 +35,6 @@ export interface OnboardingFormData {
     qualification: string;
     board: string;
     gender: string;
-    subjects: string[];
     plan: PlanValue | "";
 }
 
@@ -58,10 +57,9 @@ export const onboardingStep1Schema = z.object({
     qualification: z
         .string()
         .min(2, "Qualification must be at least 2 characters")
-        .max(100, "Qualification must be at most 100 characters"),
+        .max(15, "Qualification must be at most 15 characters"),
     board: z.string().min(1, "Board is required"),
     gender: z.string().min(1, "Gender is required"),
-    subjects: z.array(z.string()).min(1, "Select at least one subject"),
 });
 
 export type OnboardingStep1Values = z.infer<typeof onboardingStep1Schema>;

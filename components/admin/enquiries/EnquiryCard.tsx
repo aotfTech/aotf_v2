@@ -40,6 +40,7 @@ import { Select, SelectItem } from "@heroui/select";
 import { Textarea } from "@heroui/input";
 import { addToast } from "@heroui/toast";
 import { formatPhone } from "@/lib/utils/phone";
+import { useAdminPermissions } from "@/lib/hooks/useAdminPermissions";
 
 export const ENQUIRY_STATUSES = [
   "new",
@@ -84,6 +85,11 @@ export default function EnquiryCard({
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const { hasPermission } = useAdminPermissions();
+  const canCreateJobPosts = hasPermission("canCreateJobPosts");
+  const canCreateTuitionPosts = hasPermission("canCreateTuitionPosts");
+  const canUpdateEnquiryStatus = hasPermission("canUpdateEnquiryStatus");
 
   const handleCall = () => {
     const phoneNumber = enquiry.phoneNumber?.trim().replace(/[^\d+]/g, "");
@@ -323,39 +329,47 @@ export default function EnquiryCard({
         </CardBody>
         <CardFooter className="grid grid-cols-3 gap-2 justify-end">
           {/* Create Dropdown */}
-          <Dropdown placement="top">
-            <DropdownTrigger>
-              <Button color="secondary">
-                <SquarePen />
-                Create
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu
-              aria-label="Create Post Type"
-              onAction={(key) => handleCreatePost(key as "job" | "tuition")}
-            >
-              <DropdownItem
-                key="job"
-                startContent={<Briefcase size={18} />}
-                description="Create a job posting"
+          {(canCreateJobPosts || canCreateTuitionPosts) && (
+            <Dropdown placement="top">
+              <DropdownTrigger>
+                <Button color="secondary">
+                  <SquarePen />
+                  Create
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Create Post Type"
+                onAction={(key) => handleCreatePost(key as "job" | "tuition")}
               >
-                Job Post
-              </DropdownItem>
-              <DropdownItem
-                key="tuition"
-                startContent={<GraduationCap size={18} />}
-                description="Create a tuition posting"
-              >
-                Tuition Post
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
+                {canCreateJobPosts ? (
+                  <DropdownItem
+                    key="job"
+                    startContent={<Briefcase size={18} />}
+                    description="Create a job posting"
+                  >
+                    Job Post
+                  </DropdownItem>
+                ) : <DropdownItem key="job_hidden" className="hidden">Hidden</DropdownItem>}
+                {canCreateTuitionPosts ? (
+                  <DropdownItem
+                    key="tuition"
+                    startContent={<GraduationCap size={18} />}
+                    description="Create a tuition posting"
+                  >
+                    Tuition Post
+                  </DropdownItem>
+                ) : <DropdownItem key="tuition_hidden" className="hidden">Hidden</DropdownItem>}
+              </DropdownMenu>
+            </Dropdown>
+          )}
 
-          <Button color="success" onPress={openAndLoadStatus}>
-            <PencilLine />
-            Update
-          </Button>
-          <Button color="primary" onPress={handleCall}>
+          {canUpdateEnquiryStatus && (
+            <Button color="success" onPress={openAndLoadStatus}>
+              <PencilLine />
+              Update
+            </Button>
+          )}
+          <Button color="primary" onPress={handleCall} className={(canCreateJobPosts || canCreateTuitionPosts) && canUpdateEnquiryStatus ? "" : "col-start-3"}>
             <FaPhone /> Call
           </Button>
         </CardFooter>

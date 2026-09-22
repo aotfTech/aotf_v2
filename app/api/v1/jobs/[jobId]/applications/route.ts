@@ -126,6 +126,13 @@ export async function POST(
       );
     }
 
+    if (!permissions.onboardingCompleted) {
+      return NextResponse.json(
+        { error: "Please complete onboarding before applying.", redirectTo: "/onboarding" },
+        { status: 403 },
+      );
+    }
+
     const profile = await Profile.findOne({ clerkId }).lean<{
       _id: { toString(): string };
       username?: string | null;

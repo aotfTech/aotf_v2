@@ -50,6 +50,7 @@ export interface ApplicantPermissions {
   canApplyToJobs: boolean;
   role: "teacher" | "teacher_candidate" | "admin";
   status: "active" | "blocked" | "deleted";
+  onboardingCompleted: boolean;
 }
 
 export interface CreatePostApplicationParams {
@@ -241,6 +242,7 @@ export async function getApplicantPermissionsByClerkId(
         role: "teacher" | "teacher_candidate" | "admin";
         status: "active" | "blocked" | "deleted";
         plan?: { hasCandidateAccess?: boolean | null } | null;
+        onboardingCompleted?: boolean;
       }>();
 
   if (!user) {
@@ -256,6 +258,7 @@ export async function getApplicantPermissionsByClerkId(
     canApplyToJobs: candidateApplicant,
     role: user.role,
     status: user.status,
+    onboardingCompleted: Boolean(user.onboardingCompleted),
   };
 }
 

@@ -22,6 +22,7 @@ import { Calendar, Mail, MessageSquare, Star, User } from "lucide-react";
 import AdminSearchBar, {
   type FilterConfig,
 } from "@/components/admin/ui/AdminSearchBar";
+import { useAdminPermissions } from "@/lib/hooks/useAdminPermissions";
 
 type Category = "bug" | "suggestion" | "complaint" | "payment" | "general";
 type Status = "open" | "seen" | "resolved";
@@ -91,6 +92,9 @@ export default function FeedbackPage() {
   const [adminNotes, setAdminNotes] = useState("");
   const [newStatus, setNewStatus] = useState<Status>("open");
   const [updating, setUpdating] = useState(false);
+
+  const { hasPermission } = useAdminPermissions();
+  const canHandleFeedbacks = hasPermission("canHandleFeedbacks");
 
   const fetchFeedbacks = useCallback(async () => {
     setLoading(true);
@@ -477,6 +481,7 @@ export default function FeedbackPage() {
                       setNewStatus(e.target.value as Status)
                     }
                     variant="bordered"
+                    isDisabled={!canHandleFeedbacks}
                   >
                     <SelectItem key="open">Open</SelectItem>
                     <SelectItem key="seen">Seen</SelectItem>
@@ -492,6 +497,7 @@ export default function FeedbackPage() {
                     onChange={(e: any) => setAdminNotes(e.target.value)}
                     variant="bordered"
                     minRows={4}
+                    isReadOnly={!canHandleFeedbacks}
                   />
                 </div>
               </div>
@@ -499,15 +505,17 @@ export default function FeedbackPage() {
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={handleClose} isDisabled={updating}>
-              Cancel
+              {canHandleFeedbacks ? "Cancel" : "Close"}
             </Button>
-            <Button
-              color="primary"
-              onPress={handleUpdateFeedback}
-              isLoading={updating}
-            >
-              Update Feedback
-            </Button>
+            {canHandleFeedbacks && (
+              <Button
+                color="primary"
+                onPress={handleUpdateFeedback}
+                isLoading={updating}
+              >
+                Update Feedback
+              </Button>
+            )}
           </ModalFooter>
         </ModalContent>
       </Modal>

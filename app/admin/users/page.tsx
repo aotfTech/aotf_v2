@@ -34,6 +34,7 @@ import { reportClientError } from "@/lib/client-report-error";
 import { formatPhone } from "@/lib/utils/phone";
 import { Chip } from "@heroui/chip";
 import { Spinner } from "@heroui/spinner";
+import { useAdminPermissions } from "@/lib/hooks/useAdminPermissions";
 
 type Role = "teacher" | "candidate";
 type Status = "all" | "active" | "blocked" | "deleted";
@@ -229,6 +230,10 @@ export default function UsersPage() {
     () => `${statusFilter}:${debouncedSearch}`,
     [statusFilter, debouncedSearch],
   );
+
+  const { hasPermission } = useAdminPermissions();
+  const canBlockUsers = hasPermission("canBlockUsers");
+  const canRecoverPayments = hasPermission("canRecoverPayments");
 
   const currentPage = pageByRole[selectedTab];
   const users = usersByRole[selectedTab];
@@ -691,7 +696,7 @@ export default function UsersPage() {
                 >
                   View Profile
                 </Button>
-                {!user.paymentCompleted && user.statusValue !== "deleted" ? (
+                {canRecoverPayments && !user.paymentCompleted && user.statusValue !== "deleted" ? (
                   <Button
                     size="sm"
                     variant="flat"
@@ -707,7 +712,7 @@ export default function UsersPage() {
                     Recover payment
                   </Button>
                 ) : null}
-                {user.statusValue !== "deleted" ? (
+                {canBlockUsers && user.statusValue !== "deleted" ? (
                   <Button
                     size="sm"
                     variant="flat"

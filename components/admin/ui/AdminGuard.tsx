@@ -24,6 +24,7 @@ export const ROUTE_PERMISSIONS: Record<string, AdminPermissionKey | null> = {
   "/admin/payments": "canViewPayments",
   "/admin/activity": "canViewAuditLogs",
   "/admin/settings": "canManageAdmins",
+  "/admin/admins": "canManageAdmins",
   "/admin/profile": null,
   "/admin/change-password": null,
 };

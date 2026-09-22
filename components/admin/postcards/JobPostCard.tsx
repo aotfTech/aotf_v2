@@ -25,6 +25,7 @@ import {
   shareOnWhatsApp,
   type JobShareData,
 } from "@/lib/utils/share";
+import { useAdminPermissions } from "@/lib/hooks/useAdminPermissions";
 
 export interface JobPost {
   id: string; // jobId
@@ -108,6 +109,11 @@ export const JobPostCard: React.FC<JobPostCardProps> = ({
         return "default";
     }
   };
+
+  const { hasPermission } = useAdminPermissions();
+  const canEdit = hasPermission("canEditPosts");
+  const canDelete = hasPermission("canDeletePosts");
+  const canViewInvoice = hasPermission("canViewPayments");
 
   const handleShare = () => {
     const shareData: JobShareData = {
@@ -197,15 +203,17 @@ export const JobPostCard: React.FC<JobPostCardProps> = ({
 
       {isExpanded && (
         <CardBody className="gap-2 py-2">
-          <Button
-            isIconOnly
-            aria-label="Edit post"
-            variant="faded"
-            className="absolute top-2 right-2"
-            onPress={() => onEdit?.(post)}
-          >
-            <Edit size={16} />
-          </Button>
+          {canEdit && (
+            <Button
+              isIconOnly
+              aria-label="Edit post"
+              variant="faded"
+              className="absolute top-2 right-2"
+              onPress={() => onEdit?.(post)}
+            >
+              <Edit size={16} />
+            </Button>
+          )}
           {/* Job Details */}
           <div className="space-y-2">
             <div>
@@ -393,7 +401,7 @@ export const JobPostCard: React.FC<JobPostCardProps> = ({
       <Divider />
 
       <CardFooter className="grid grid-cols-2 gap-2 py-3">
-        {onGenerateInvoice && (
+        {canViewInvoice && onGenerateInvoice && (
           <Button
             size="sm"
             variant="flat"
@@ -412,15 +420,17 @@ export const JobPostCard: React.FC<JobPostCardProps> = ({
         >
           View
         </Button>
-        <Button
-          size="sm"
-          color={post.status === "cancelled" ? "success" : "danger"}
-          variant="solid"
-          startContent={<XCircle size={16} />}
-          onPress={() => onCancel?.(post)}
-        >
-          {post.status === "cancelled" ? "Restore" : "Cancel"}
-        </Button>
+        {canDelete && (
+          <Button
+            size="sm"
+            color={post.status === "cancelled" ? "success" : "danger"}
+            variant="solid"
+            startContent={<XCircle size={16} />}
+            onPress={() => onCancel?.(post)}
+          >
+            {post.status === "cancelled" ? "Restore" : "Cancel"}
+          </Button>
+        )}
         <Button
           size="sm"
           color="primary"

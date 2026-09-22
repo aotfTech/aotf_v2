@@ -1,10 +1,12 @@
 allowBuilds:
   '@clerk/shared': true
   '@heroui/shared-utils': true
+  '@parcel/watcher': false
   '@sentry/cli': true
   '@tsparticles/engine': true
   core-js: true
   esbuild: true
+  mongodb-memory-server: false
   sharp: true
   unrs-resolver: true
 ignoredBuiltDependencies:

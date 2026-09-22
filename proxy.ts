@@ -1,4 +1,4 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { NextFetchEvent } from "next/server";
@@ -117,6 +117,30 @@ const middleware = clerkMiddleware(async (auth, req) => {
   if (pathname === "/dashboard/redirect" && userId) {
     try {
       await dbConnect();
+
+      // Check if user is an admin first
+      let isAdmin = meta?.isAdmin === true;
+      if (!isAdmin) {
+        try {
+          const client = await clerkClient();
+          const clerkUser = await client.users.getUser(userId);
+          if (clerkUser.publicMetadata?.isAdmin === true) {
+            isAdmin = true;
+          }
+        } catch (err) {
+          console.error("[proxy] Error fetching user from Clerk for dashboard redirect:", err);
+        }
+      }
+
+      if (isAdmin) {
+        return NextResponse.redirect(new URL("/admin", req.url));
+      }
+
+      const adminDoc = await Admin.findOne({ clerkId: userId }).lean();
+      if (adminDoc) {
+        return NextResponse.redirect(new URL("/admin", req.url));
+      }
+
       const userDoc = await User.findOne(
         { clerkId: userId },
         { username: 1, onboardingCompleted: 1 },
@@ -148,10 +172,19 @@ const middleware = clerkMiddleware(async (auth, req) => {
   if (shouldResolveAdminStatus) {
     try {
       await dbConnect();
-      const adminDoc = await Admin.findOne(
+      let adminDoc = await Admin.findOne(
         { clerkId: userId },
-        { isActive: 1, isLocked: 1, requirePasswordChange: 1 },
+        { isActive: 1, status: 1, isLocked: 1, requirePasswordChange: 1 },
       ).lean();
+
+      if (!adminDoc) {
+        // Fallback for new admin invite system
+        const AdminUser = require("@/lib/models/admin/AdminUser").default;
+        const adminUserDoc = await AdminUser.findOne({ clerkUserId: userId }, { status: 1 }).lean();
+        if (adminUserDoc) {
+          adminDoc = { isActive: adminUserDoc.status === "ACTIVE" } as any;
+        }
+      }
 
       if (adminDoc) {
         isUserAdmin = true;
@@ -181,6 +214,21 @@ const middleware = clerkMiddleware(async (auth, req) => {
     // Check admin status — use JWT claim first, but fall back to DB if stale
     // (Clerk JWT may not have updated publicMetadata immediately after sign-in)
     let isAdminConfirmed = meta?.isAdmin === true;
+    
+    // If the JWT doesn't have publicMetadata (e.g. session token template not configured),
+    // fetch the user directly from Clerk to check their metadata.
+    if (!isAdminConfirmed && userId) {
+      try {
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+        if (clerkUser.publicMetadata?.isAdmin === true) {
+          isAdminConfirmed = true;
+        }
+      } catch (err) {
+        console.error("[proxy] Error fetching user from Clerk:", err);
+      }
+    }
+
     let adminDoc: {
       isActive?: boolean;
       isLocked?: boolean;
@@ -191,11 +239,24 @@ const middleware = clerkMiddleware(async (auth, req) => {
       await dbConnect();
       adminDoc = await Admin.findOne(
         { clerkId: userId },
-        { isActive: 1, isLocked: 1, requirePasswordChange: 1 },
+        { isActive: 1, status: 1, isLocked: 1, requirePasswordChange: 1 },
       ).lean();
 
+      if (!adminDoc) {
+        // Fallback for new admin invite system
+        const AdminUser = require("@/lib/models/admin/AdminUser").default;
+        const adminUserDoc = await AdminUser.findOne({ clerkUserId: userId }, { status: 1, isLocked: 1, requirePasswordChange: 1 }).lean();
+        if (adminUserDoc) {
+          adminDoc = { 
+            isActive: adminUserDoc.status === "ACTIVE",
+            isLocked: false,
+            requirePasswordChange: false 
+          } as any;
+        }
+      }
+
       // DB is the source of truth — if admin record exists, they're an admin
-      if (adminDoc) {
+      if (adminDoc || isAdminConfirmed) {
         isAdminConfirmed = true;
         isUserAdmin = true;
       }
@@ -208,7 +269,7 @@ const middleware = clerkMiddleware(async (auth, req) => {
       // If DB is down, fall back to JWT claim to avoid blocking admins
     }
 
-    if (!isAdminConfirmed || !adminDoc) {
+    if (!isAdminConfirmed) {
       // Neither JWT nor DB confirms admin status — redirect to home
       if (isApiRequest) {
         return NextResponse.json(
@@ -221,47 +282,49 @@ const middleware = clerkMiddleware(async (auth, req) => {
     }
 
     // Additional admin-specific checks for authenticated admins
-    if (!adminDoc.isActive) {
-      // Admin account is deactivated
-      if (isApiRequest) {
-        return NextResponse.json(
-          { error: "Admin account is deactivated" },
-          { status: 403 },
+    if (adminDoc) {
+      if (adminDoc.isActive === false && (adminDoc as any).status !== "ACTIVE") {
+        // Admin account is deactivated
+        if (isApiRequest) {
+          return NextResponse.json(
+            { error: "Admin account is deactivated" },
+            { status: 403 },
+          );
+        }
+
+        return NextResponse.redirect(
+          new URL("/admin/login?error=deactivated", req.url),
         );
       }
 
-      return NextResponse.redirect(
-        new URL("/admin/login?error=deactivated", req.url),
-      );
-    }
+      if (adminDoc.isLocked) {
+        // Admin account is locked (failed login attempts or manual lock)
+        if (isApiRequest) {
+          return NextResponse.json(
+            { error: "Admin account is locked" },
+            { status: 403 },
+          );
+        }
 
-    if (adminDoc.isLocked) {
-      // Admin account is locked (failed login attempts or manual lock)
-      if (isApiRequest) {
-        return NextResponse.json(
-          { error: "Admin account is locked" },
-          { status: 403 },
+        return NextResponse.redirect(
+          new URL("/admin/login?error=locked", req.url),
         );
       }
 
-      return NextResponse.redirect(
-        new URL("/admin/login?error=locked", req.url),
-      );
-    }
+      // If admin requires password change, only allow access to password change page
+      if (
+        adminDoc.requirePasswordChange &&
+        pathname !== "/admin/change-password"
+      ) {
+        if (isApiRequest) {
+          return NextResponse.json(
+            { error: "Password change required" },
+            { status: 403 },
+          );
+        }
 
-    // If admin requires password change, only allow access to password change page
-    if (
-      adminDoc.requirePasswordChange &&
-      pathname !== "/admin/change-password"
-    ) {
-      if (isApiRequest) {
-        return NextResponse.json(
-          { error: "Password change required" },
-          { status: 403 },
-        );
+        return NextResponse.redirect(new URL("/admin/change-password", req.url));
       }
-
-      return NextResponse.redirect(new URL("/admin/change-password", req.url));
     }
   }
 

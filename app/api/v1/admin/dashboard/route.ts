@@ -270,12 +270,16 @@ async function getSuperAdminData(adminClerkId: string) {
     ]),
 
     // Current month new users
-    User.countDocuments({ createdAt: { $gte: monthStart, $lte: monthEnd } }),
+    User.aggregate([
+      { $match: { createdAt: { $gte: monthStart, $lte: monthEnd } } },
+      { $count: "count" }
+    ]).then((res) => res[0]?.count ?? 0),
 
     // Previous month new users (for growth %)
-    User.countDocuments({
-      createdAt: { $gte: prevMonthStart, $lte: prevMonthEnd },
-    }),
+    User.aggregate([
+      { $match: { createdAt: { $gte: prevMonthStart, $lte: prevMonthEnd } } },
+      { $count: "count" }
+    ]).then((res) => res[0]?.count ?? 0),
 
     // All-time blocked users
     User.countDocuments({ status: "blocked" }),
@@ -458,7 +462,11 @@ async function getSupportAdminData(adminDoc: { _id: mongoose.Types.ObjectId }) {
     await Promise.all([
       Enquiry.countDocuments({
         lastActionByAdminId: adminDoc._id,
-        currentStatus: { $in: ["new", "in_progress", "contacted"] },
+        $or: [
+          { currentStatus: "new" },
+          { currentStatus: "in_progress" },
+          { currentStatus: "contacted" },
+        ],
       }),
 
       Enquiry.aggregate([
@@ -466,10 +474,10 @@ async function getSupportAdminData(adminDoc: { _id: mongoose.Types.ObjectId }) {
         { $group: { _id: "$currentStatus", count: { $sum: 1 } } },
       ]),
 
-      Enquiry.countDocuments({
-        lastActionByAdminId: adminDoc._id,
-        lastActionAt: { $gte: todayStart },
-      }),
+      Enquiry.aggregate([
+        { $match: { lastActionByAdminId: adminDoc._id, lastActionAt: { $gte: todayStart } } },
+        { $count: "count" }
+      ]).then((res) => res[0]?.count ?? 0),
 
       Feedback.find({ handledByAdminId: adminDoc._id })
         .sort({ handledAt: -1 })
@@ -515,10 +523,10 @@ export async function GET() {
 
     const adminRaw = await Admin.findOne(
       { clerkId: userId },
-      { clerkId: 1, role: 1, isActive: 1, _id: 1 },
-    ).lean();
+      { clerkId: 1, role: 1, isActive: 1, status: 1, _id: 1 },
+    ).lean() as any;
 
-    if (!adminRaw || !adminRaw.isActive) {
+    if (!adminRaw || (adminRaw.isActive === false && adminRaw.status !== "ACTIVE")) {
       return NextResponse.json(
         { error: "Forbidden: admin not active" },
         { status: 403 },

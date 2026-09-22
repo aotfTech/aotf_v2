@@ -83,6 +83,8 @@ const userSchema = new Schema(
       ref: "Payment",
       default: null,
     },
+    createdAt: { type: Date },
+    updatedAt: { type: Date },
   },
   { timestamps: true },
 );

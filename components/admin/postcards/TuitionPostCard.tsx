@@ -29,6 +29,7 @@ import {
   type TuitionShareData,
 } from "@/lib/utils/share";
 import { formatSubjectsList } from "@/lib/utils/subject";
+import { useAdminPermissions } from "@/lib/hooks/useAdminPermissions";
 
 export interface TuitionPostStudent {
   className: string;
@@ -127,6 +128,11 @@ export const TuitionPostCard: React.FC<TuitionPostCardProps> = ({
   const boardDisplay = safeStudents.map((s) => s.board).join(", ");
   const title = `${subjectDisplay} - Class ${classDisplay}`;
   const subtitle = `${boardDisplay} • ${post.location}`;
+  
+  const { hasPermission } = useAdminPermissions();
+  const canEdit = hasPermission("canEditPosts");
+  const canDelete = hasPermission("canDeletePosts");
+  const canViewInvoice = hasPermission("canViewPayments");
 
   const handleShare = () => {
     const shareData: TuitionShareData = {
@@ -182,15 +188,17 @@ export const TuitionPostCard: React.FC<TuitionPostCardProps> = ({
       {isExpanded && (
         <CardBody className="gap-1 py-1">
           {" "}
-          <Button
-            isIconOnly
-            aria-label="Take a photo"
-            variant="faded"
-            className="absolute top-2 right-2"
-            onPress={() => onEdit?.(post)}
-          >
-            <Edit size={16} />
-          </Button>
+          {canEdit && (
+            <Button
+              isIconOnly
+              aria-label="Edit post"
+              variant="faded"
+              className="absolute top-2 right-2"
+              onPress={() => onEdit?.(post)}
+            >
+              <Edit size={16} />
+            </Button>
+          )}
           {/* Academic Details */}
           <p className="text-sm font-semibold text-default-700">
             Academic Details
@@ -363,28 +371,30 @@ export const TuitionPostCard: React.FC<TuitionPostCardProps> = ({
       <Divider />
 
       <CardFooter className="grid grid-cols-2 gap-2 py-3 flex-wrap">
-        {post.invoiceId || post.invoiceGenerated ? (
-          <Button
-            size="sm"
-            color={post.invoiceId ? "success" : "secondary"}
-            variant="flat"
-            startContent={<Receipt size={16} />}
-            onPress={() => onGenerateInvoice?.(post)}
-            className="flex-1"
-          >
-            {post.invoiceId ? "Edit Invoice" : "Invoice Created"}
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            color="secondary"
-            variant="flat"
-            startContent={<Receipt size={16} />}
-            onPress={() => onGenerateInvoice?.(post)}
-            className="flex-1"
-          >
-            Invoice
-          </Button>
+        {canViewInvoice && (
+          post.invoiceId || post.invoiceGenerated ? (
+            <Button
+              size="sm"
+              color={post.invoiceId ? "success" : "secondary"}
+              variant="flat"
+              startContent={<Receipt size={16} />}
+              onPress={() => onGenerateInvoice?.(post)}
+              className="flex-1"
+            >
+              {post.invoiceId ? "Edit Invoice" : "Invoice Created"}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              color="secondary"
+              variant="flat"
+              startContent={<Receipt size={16} />}
+              onPress={() => onGenerateInvoice?.(post)}
+              className="flex-1"
+            >
+              Invoice
+            </Button>
+          )
         )}
         <Button
           size="sm"
@@ -396,16 +406,18 @@ export const TuitionPostCard: React.FC<TuitionPostCardProps> = ({
         >
           View
         </Button>
-        <Button
-          size="sm"
-          color={post.status === "cancelled" ? "success" : "danger"}
-          variant="solid"
-          startContent={<XCircle size={16} />}
-          onPress={() => onCancel?.(post)}
-          className="flex-1"
-        >
-          {post.status === "cancelled" ? "Restore" : "Cancel"}
-        </Button>
+        {canDelete && (
+          <Button
+            size="sm"
+            color={post.status === "cancelled" ? "success" : "danger"}
+            variant="solid"
+            startContent={<XCircle size={16} />}
+            onPress={() => onCancel?.(post)}
+            className="flex-1"
+          >
+            {post.status === "cancelled" ? "Restore" : "Cancel"}
+          </Button>
+        )}
         <Button
           size="sm"
           color="primary"

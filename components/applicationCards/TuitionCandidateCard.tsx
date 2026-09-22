@@ -29,16 +29,16 @@ export interface Candidate {
   applicantType?: "teacher" | "candidate";
   avatar?: string;
   status:
-    | "applied"
-    | "pending"
-    | "shortlisted"
-    | "DC"
-    | "GC"
-    | "approved"
-    | "decline"
-    | "declined"
-    | "auto_declined"
-    | "withdrawn";
+  | "applied"
+  | "pending"
+  | "shortlisted"
+  | "DC"
+  | "GC"
+  | "approved"
+  | "decline"
+  | "declined"
+  | "auto_declined"
+  | "withdrawn";
   appliedDate: string;
   coverLetter?: string;
   board?: string | null;
@@ -190,17 +190,6 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
                   {candidate.board?.trim() || "N/A"}
                 </span>
               </div>
-
-              <div className="flex items-center gap-1.5">
-                <GraduationCap
-                  size={13}
-                  className="text-default-400 shrink-0"
-                />
-                <span className="font-medium text-default-700 truncate">
-                  {candidate.qualification?.trim() || "N/A"}
-                </span>
-              </div>
-
               <div className="flex items-center gap-1.5">
                 <BriefcaseBusiness
                   size={13}
@@ -212,16 +201,15 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
                 </span>
               </div>
             </div>
-
-            {candidate.subjects && candidate.subjects.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {candidate.subjects.map((sub, idx) => (
-                  <Chip key={idx} size="sm" variant="flat" color="secondary" className="text-[10px]">
-                    {formatSubjectLabel(sub)}
-                  </Chip>
-                ))}
-              </div>
-            )}
+            <div className="flex items-center gap-1.5">
+              <GraduationCap
+                size={13}
+                className="text-default-400 shrink-0"
+              />
+              <span className="font-medium text-default-700 truncate">
+                {candidate.qualification?.trim() || "N/A"}
+              </span>
+            </div>
 
             <div className="flex items-center gap-1.5 sm:col-span-2 mt-1">
               <MapPin size={13} className="text-default-400 shrink-0" />
@@ -229,6 +217,17 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
                 {candidate.address?.trim() || "N/A"}
               </span>
             </div>
+            {/* {candidate.subjects && candidate.subjects.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {candidate.subjects.map((sub, idx) => (
+                  <Chip key={idx} size="sm" variant="flat" color="secondary" className="text-[10px]">
+                    {formatSubjectLabel(sub)}
+                  </Chip>
+                ))}
+              </div>
+            )} */}
+
+
           </div>
         </div>
       </CardBody>

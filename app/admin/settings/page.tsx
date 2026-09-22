@@ -1201,7 +1201,7 @@ function AdminAccountsSection() {
                     </div>
                   </div>
                   <Divider className="my-2" />
-                  <p className="text-sm">
+                  <div className="text-sm">
                     <span className="font-semibold">Role:</span>{" "}
                     <Chip
                       size="sm"
@@ -1210,7 +1210,7 @@ function AdminAccountsSection() {
                     >
                       {getRoleLabel(deleteTarget.role, roles)}
                     </Chip>
-                  </p>
+                  </div>
                   <p className="text-sm">
                     <span className="font-semibold">ID:</span>{" "}
                     <span className="text-default-500">{deleteTarget.id}</span>

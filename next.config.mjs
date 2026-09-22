@@ -5,6 +5,9 @@ const DEFAULT_CLERK_ORIGINS = [
   "https://clerk.aotf.in",
   "https://www.aotf.in",
   "https://aotf.in",
+  "https://clerk.accounts.dev",
+  "https://*.clerk.accounts.dev",
+  "https://api.clerk.com",
 ];
 
 function toHttpsOrigin(value) {

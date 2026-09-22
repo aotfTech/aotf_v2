@@ -20,7 +20,7 @@ export default function QualificationField({
     <Input
       label="Highest Qualification"
       isRequired
-      maxLength={100}
+      maxLength={15}
       value={value}
       isInvalid={!!error}
       errorMessage={error}

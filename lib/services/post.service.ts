@@ -307,6 +307,9 @@ export async function listPosts(
     classType,
     minBudget,
     maxBudget,
+    date,
+    startDate,
+    endDate,
   } = input;
 
   // Build filter
@@ -379,6 +382,29 @@ export async function listPosts(
       ...(minBudget !== undefined ? { $gte: minBudget } : {}),
       ...(maxBudget !== undefined ? { $lte: maxBudget } : {}),
     });
+  }
+
+  if (date) {
+    const [year, month, day] = date.split("-").map(Number);
+    // Parse in local time context or UTC context depending on how frontend sends it. 
+    // Usually local time of the user is expected, but since we are server side, we can just use UTC or local midnight.
+    // DateChips sends YYYY-MM-DD which corresponds to the user's local date.
+    // To match it, we'll check from 00:00:00 to 23:59:59 of that date in UTC (assuming server operates in UTC).
+    // Or even better, just construct dates using the local timezone. Let's assume the local timezone of India (since the app seems Indian based).
+    const start = new Date(`${date}T00:00:00.000+05:30`);
+    const end = new Date(`${date}T23:59:59.999+05:30`);
+    filter.createdAt = mongoose.trusted({ $gte: start, $lte: end });
+  } else if (startDate || endDate) {
+    const dateFilter: Record<string, Date> = {};
+    if (startDate) {
+      dateFilter.$gte = new Date(`${startDate}T00:00:00.000+05:30`);
+    }
+    if (endDate) {
+      dateFilter.$lte = new Date(`${endDate}T23:59:59.999+05:30`);
+    }
+    if (Object.keys(dateFilter).length > 0) {
+      filter.createdAt = mongoose.trusted(dateFilter);
+    }
   }
 
   const [posts, total] = await Promise.all([
