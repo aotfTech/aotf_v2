@@ -117,6 +117,7 @@ export async function PATCH(req: Request) {
 
     await dbConnect();
 
+    let validatedSubjects: string[] | undefined;
     if (subjects !== undefined) {
       if (!Array.isArray(subjects) || subjects.length === 0 || subjects.length > 20) {
         return NextResponse.json({ error: "Select at least one subject" }, { status: 400 });
@@ -126,11 +127,12 @@ export async function PATCH(req: Request) {
       }
       const uniqueSubjects = Array.from(new Set(subjects));
       const count = await Subject.countDocuments({
-        $or: uniqueSubjects.map((key) => ({ key })),
+        key: { $in: uniqueSubjects },
       });
       if (count !== uniqueSubjects.length) {
         return NextResponse.json({ error: "One or more subjects are invalid" }, { status: 400 });
       }
+      validatedSubjects = uniqueSubjects;
     }
 
     // Ensure User + Profile exist (self-heals if the Clerk webhook was delayed)
@@ -145,7 +147,7 @@ export async function PATCH(req: Request) {
     if (qualification !== undefined) updateFields.qualification = qualification;
     if (board !== undefined) updateFields.board = board;
     if (normalizedGender !== undefined) updateFields.gender = normalizedGender;
-    if (subjects !== undefined) updateFields.subjects = subjects;
+    if (validatedSubjects !== undefined) updateFields.subjects = validatedSubjects;
     if (plan !== undefined) updateFields.plan = plan;
     // Refresh the 72-hour TTL on every save while payment hasn't happened
     updateFields.expiresAt = user.paymentCompleted

@@ -89,7 +89,7 @@ async function get(
   const profileSubjectKeys = profile.subjects ?? [];
   const subjectDocs = profileSubjectKeys.length
     ? await Subject.find(
-        { $or: profileSubjectKeys.map((key) => ({ key })) },
+        { key: { $in: profileSubjectKeys } },
         { key: 1, label: 1 },
       ).lean()
     : [];

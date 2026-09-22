@@ -123,6 +123,10 @@ export default function ApplyActionButton({
 
       if (!response.ok) {
         if (response.status === 403 && data.redirectTo === "/onboarding") {
+          addToast({
+            description: data.error || "Please complete onboarding before applying.",
+            color: "warning",
+          });
           router.push("/onboarding");
           return;
         }
@@ -133,6 +137,10 @@ export default function ApplyActionButton({
           (data.error.includes("phone number") ||
             data.error.includes("Complete your profile"))
         ) {
+          addToast({
+            description: data.error,
+            color: "warning",
+          });
           router.push("/onboarding");
           return;
         }

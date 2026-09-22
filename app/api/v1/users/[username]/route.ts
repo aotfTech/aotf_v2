@@ -32,10 +32,10 @@ async function get(
   }
   const profileSubjectKeys = profile.subjects ?? [];
   const subjectDocs = profileSubjectKeys.length
-    ? await Subject.find(
-        { $or: profileSubjectKeys.map((key) => ({ key })) },
-        { key: 1, label: 1 },
-      ).lean()
+      ? await Subject.find(
+          { key: { $in: profileSubjectKeys } },
+          { key: 1, label: 1 },
+        ).lean()
     : [];
   const subjectLabels = new Map(subjectDocs.map((subject) => [subject.key, subject.label]));
 
