@@ -59,6 +59,24 @@ const isOnboardingApiRoute = createRouteMatcher([
   "/api/v1/users(.*)",
   "/api/v1/feedback(.*)", // Admin-only route, skip onboarding check (API handles auth)
 ]);
+
+// Routes that logged-in but not-yet-onboarded users are allowed to access
+const isIgnoredByOnboarding = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/sso-callback(.*)",
+  "/verify(.*)",
+  "/api/v1/webhooks(.*)",
+  "/api/v1/subjects(.*)", // Needed for the profile/onboarding form
+  "/about(.*)",
+  "/contact(.*)",
+  "/privacy-policy(.*)",
+  "/refund-policy(.*)",
+  "/terms(.*)",
+  "/services(.*)",
+  "/docs(.*)",
+  "/api/search(.*)",
+]);
 // ─── Clerk middleware instance ───────────────────────────────────────
 
 const middleware = clerkMiddleware(async (auth, req) => {
@@ -369,7 +387,7 @@ const middleware = clerkMiddleware(async (auth, req) => {
   if (
     userId &&
     !isUserAdmin &&
-    !isPublicRoute(req) &&
+    !isIgnoredByOnboarding(req) &&
     !isAdminRoute(req) &&
     !isAdminApiRoute(req) &&
     !isOnboardingRoute(req) &&
