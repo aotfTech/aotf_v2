@@ -152,9 +152,6 @@ export async function PATCH(req: Request) {
     // Ensure User + Profile exist (self-heals if the Clerk webhook was delayed)
     const user = await ensureUserRecord(clerkId);
 
-    if (normalizedGender !== undefined) {
-      await User.updateOne({ clerkId }, { $set: { gender: normalizedGender } });
-    }
 
     const profile = await Profile.findOneAndUpdate(
       { clerkId },

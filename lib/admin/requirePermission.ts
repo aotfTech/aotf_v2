@@ -62,7 +62,28 @@ export function requirePermission(...required: Permission[]) {
       });
     }
 
-    const admin = await Admin.findOne({ clerkId: userId }).lean();
+    let admin = await Admin.findOne({ clerkId: userId }).lean();
+
+    if (!admin) {
+      const AdminUser = require("@/lib/models/admin/AdminUser").default;
+      const adminUser = await AdminUser.findOne({ clerkUserId: userId }).lean();
+      if (adminUser) {
+        admin = {
+          ...adminUser,
+          isActive: adminUser.status === "ACTIVE",
+          clerkId: adminUser.clerkUserId,
+          permissions: adminUser.metadata?.permissions || {},
+        };
+      }
+    }
+
+    if (!admin && metadata.isAdmin === true) {
+      admin = {
+        isActive: true,
+        role: (metadata.role as string) || "admin",
+        permissions: (metadata.permissions || {}) as any,
+      } as any;
+    }
 
     if (!admin || !admin.isActive) {
       return {
@@ -105,5 +126,35 @@ export async function getAdminFromRequest(_req: Request) {
   await dbConnect();
   const { userId } = await auth();
   if (!userId) return null;
-  return await Admin.findOne({ clerkId: userId }).lean();
+  let admin = await Admin.findOne({ clerkId: userId }).lean();
+
+  if (!admin) {
+    const AdminUser = require("@/lib/models/admin/AdminUser").default;
+    const adminUser = await AdminUser.findOne({ clerkUserId: userId }).lean();
+    if (adminUser) {
+      admin = {
+        ...adminUser,
+        isActive: adminUser.status === "ACTIVE",
+        clerkId: adminUser.clerkUserId,
+        permissions: adminUser.metadata?.permissions || {},
+      };
+    }
+  }
+
+  if (!admin) {
+    try {
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(userId);
+      const metadata = clerkUser.publicMetadata as Record<string, unknown>;
+      if (metadata.isAdmin === true) {
+        admin = {
+          isActive: true,
+          role: (metadata.role as string) || "admin",
+          permissions: (metadata.permissions || {}) as any,
+        } as any;
+      }
+    } catch (e) {}
+  }
+
+  return admin;
 }
