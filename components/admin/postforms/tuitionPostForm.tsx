@@ -77,6 +77,10 @@ function makeKeyFromLabel(label: string) {
     .replace(/_+/g, "_");
 }
 
+function sortOptionsByLabel<T extends { key: string; label: string }>(options: T[]) {
+  return [...options].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+}
+
 function OptionManagerModal({
   title,
   endpoint,
@@ -84,6 +88,7 @@ function OptionManagerModal({
   isOpen,
   onClose,
   onRefresh,
+  onCreated,
 }: {
   title: string;
   endpoint: string;
@@ -91,6 +96,7 @@ function OptionManagerModal({
   isOpen: boolean;
   onClose: () => void;
   onRefresh: () => Promise<void>;
+  onCreated?: (item: OptionItem) => void;
 }) {
   const [form, setForm] = useState({ key: "", label: "" });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -129,7 +135,12 @@ function OptionManagerModal({
         );
       }
 
+      const responseData = await res.json().catch(() => ({}));
       await onRefresh();
+      if (!editingId && onCreated) {
+        const created = responseData.source ?? responseData.subject ?? responseData.class ?? responseData.board;
+        if (created?.key && created?.label) onCreated(created);
+      }
       setForm({ key: "", label: "" });
       setEditingId(null);
       addToast({
@@ -325,6 +336,7 @@ export default function TuitionPostForm({
   const [isSubjectManagerOpen, setIsSubjectManagerOpen] = useState(false);
   const [isClassManagerOpen, setIsClassManagerOpen] = useState(false);
   const [isBoardManagerOpen, setIsBoardManagerOpen] = useState(false);
+  const [optionStudentIndex, setOptionStudentIndex] = useState(0);
 
   const combinedSources = useMemo(() => {
     const map = new Map<string, string>();
@@ -332,7 +344,7 @@ export default function TuitionPostForm({
     extraSources.forEach((s) => {
       if (!map.has(s.key)) map.set(s.key, s.label);
     });
-    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+    return sortOptionsByLabel(Array.from(map.entries()).map(([key, label]) => ({ key, label })));
   }, [extraSources]);
 
   const combinedSubjects = useMemo(() => {
@@ -341,7 +353,7 @@ export default function TuitionPostForm({
     extraSubjects.forEach((s) => {
       if (!map.has(s.key)) map.set(s.key, s.label);
     });
-    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+    return sortOptionsByLabel(Array.from(map.entries()).map(([key, label]) => ({ key, label })));
   }, [extraSubjects]);
 
   const combinedClasses = useMemo(() => {
@@ -350,7 +362,7 @@ export default function TuitionPostForm({
     extraClasses.forEach((c) => {
       if (!map.has(c.key)) map.set(c.key, c.label);
     });
-    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+    return sortOptionsByLabel(Array.from(map.entries()).map(([key, label]) => ({ key, label })));
   }, [extraClasses]);
 
   const combinedBoards = useMemo(() => {
@@ -359,7 +371,7 @@ export default function TuitionPostForm({
     extraBoards.forEach((b) => {
       if (!map.has(b.key)) map.set(b.key, b.label);
     });
-    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+    return sortOptionsByLabel(Array.from(map.entries()).map(([key, label]) => ({ key, label })));
   }, [extraBoards]);
 
   /**
@@ -557,6 +569,21 @@ export default function TuitionPostForm({
     if (errors[errorKey]) {
       setErrors((prev) => ({ ...prev, [errorKey]: "" }));
     }
+  };
+
+  const selectCreatedStudentOption = (field: "class" | "board" | "subjects", key: string) => {
+    setFormData((prev) => {
+      const students = [...prev.students];
+      const student = students[optionStudentIndex];
+      if (!student) return prev;
+      students[optionStudentIndex] = {
+        ...student,
+        [field]: field === "subjects"
+          ? Array.from(new Set([...student.subjects, key]))
+          : key,
+      };
+      return { ...prev, students };
+    });
   };
   const addStudent = () => {
     // If there's already at least one student, ask whether to copy the last one
@@ -1061,7 +1088,7 @@ export default function TuitionPostForm({
                     errorMessage={errors.source}
                     variant="bordered"
                   >
-                    {[{ key: ADD_NEW_VALUE, label: "➕ Add new options" }, ...combinedSources].map((source) => (
+                    {[...combinedSources, { key: ADD_NEW_VALUE, label: "➕ Add new options" }].map((source) => (
                       <SelectItem key={source.key}>{source.label}</SelectItem>
                     ))}
                   </Select>
@@ -1132,6 +1159,7 @@ export default function TuitionPostForm({
                             const value = Array.from(keys)[0] as string | undefined;
                             if (!value) return;
                             if (value === ADD_NEW_VALUE) {
+                              setOptionStudentIndex(index);
                               setIsClassManagerOpen(true);
                               return;
                             }
@@ -1142,7 +1170,7 @@ export default function TuitionPostForm({
                           errorMessage={errors[`students.${index}.class`]}
                           variant="bordered"
                         >
-                          {[{ key: ADD_NEW_VALUE, label: "➕ Add new option" }, ...combinedClasses].map((cls) => (
+                          {[...combinedClasses, { key: ADD_NEW_VALUE, label: "➕ Add new option" }].map((cls) => (
                             <SelectItem key={cls.key}>
                               {cls.label}
                             </SelectItem>
@@ -1161,6 +1189,7 @@ export default function TuitionPostForm({
                             const value = Array.from(keys)[0] as string | undefined;
                             if (!value) return;
                             if (value === ADD_NEW_VALUE) {
+                              setOptionStudentIndex(index);
                               setIsBoardManagerOpen(true);
                               return;
                             }
@@ -1171,7 +1200,7 @@ export default function TuitionPostForm({
                           errorMessage={errors[`students.${index}.board`]}
                           variant="bordered"
                         >
-                          {[{ key: ADD_NEW_VALUE, label: "➕ Add new option" }, ...combinedBoards].map((board) => (
+                          {[...combinedBoards, { key: ADD_NEW_VALUE, label: "➕ Add new option" }].map((board) => (
                             <SelectItem key={board.key}>
                               {board.label}
                             </SelectItem>
@@ -1187,6 +1216,7 @@ export default function TuitionPostForm({
                           onSelectionChange={(keys) => {
                             const vals = Array.from(keys) as string[];
                             if (vals.includes(ADD_NEW_VALUE)) {
+                              setOptionStudentIndex(index);
                               setIsSubjectManagerOpen(true);
                               handleStudentChange(
                                 index,
@@ -1202,7 +1232,7 @@ export default function TuitionPostForm({
                           errorMessage={errors[`students.${index}.subjects`]}
                           variant="bordered"
                         >
-                          {[{ key: ADD_NEW_VALUE, label: "➕ Add new option" }, ...combinedSubjects].map((sub) => (
+                          {[...combinedSubjects, { key: ADD_NEW_VALUE, label: "➕ Add new option" }].map((sub) => (
                             <SelectItem key={sub.key}>
                               {sub.label}
                             </SelectItem>
@@ -1637,6 +1667,7 @@ export default function TuitionPostForm({
         isOpen={isSourceManagerOpen}
         onClose={() => setIsSourceManagerOpen(false)}
         onRefresh={loadSources}
+        onCreated={(item) => handleChange("source", item.key)}
       />
 
       <OptionManagerModal
@@ -1646,6 +1677,7 @@ export default function TuitionPostForm({
         isOpen={isSubjectManagerOpen}
         onClose={() => setIsSubjectManagerOpen(false)}
         onRefresh={loadSubjects}
+        onCreated={(item) => selectCreatedStudentOption("subjects", item.key)}
       />
 
       <OptionManagerModal
@@ -1655,6 +1687,7 @@ export default function TuitionPostForm({
         isOpen={isClassManagerOpen}
         onClose={() => setIsClassManagerOpen(false)}
         onRefresh={loadClasses}
+        onCreated={(item) => selectCreatedStudentOption("class", item.key)}
       />
 
       <OptionManagerModal
@@ -1664,6 +1697,7 @@ export default function TuitionPostForm({
         isOpen={isBoardManagerOpen}
         onClose={() => setIsBoardManagerOpen(false)}
         onRefresh={loadBoards}
+        onCreated={(item) => selectCreatedStudentOption("board", item.key)}
       />
 
       {/* Add Student Modal */}

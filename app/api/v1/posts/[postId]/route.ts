@@ -10,6 +10,7 @@ import {
 } from "@/lib/api-utils";
 import Admin from "@/lib/models/Admin";
 import Referral from "@/lib/models/Referral";
+import Source from "@/lib/models/Source";
 import dbConnect from "@/lib/db";
 import { updatePostSchema } from "@/lib/validations/post";
 import {
@@ -21,6 +22,7 @@ import { upsertPostLedger } from "@/lib/services/postLedger.service";
 import { logActivity } from "@/lib/admin/logActivity";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { postIdParamSchema } from "@/lib/validations/api-route";
+import { sourceLists } from "@/lib/validations/forms";
 
 /** 60 reads per IP per minute */
 const readLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
@@ -98,6 +100,13 @@ export async function PATCH(
     const { postId } = postIdParamSchema.parse(await params);
     const body = await request.json();
     const input = updatePostSchema.parse(body);
+    if (input.source) {
+      const dbSource = await Source.exists({ key: input.source });
+      const isBuiltInSource = sourceLists.some((source) => source.key === input.source);
+      if (!dbSource && !isBuiltInSource) {
+        return NextResponse.json({ error: `Invalid source: ${input.source}` }, { status: 400 });
+      }
+    }
     if (
       input.source === "referral" &&
       (!input.referralUserName?.trim() || !input.referralPhoneNumber?.trim())

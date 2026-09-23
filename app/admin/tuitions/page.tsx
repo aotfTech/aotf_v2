@@ -152,8 +152,6 @@ function InvoiceModal({
   onSuccess: (invoiceId: string) => void;
 }) {
   const router = useRouter();
-  const today = new Date().toISOString().slice(0, 10);
-  const due = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
 
   const safeStudents = post.students ?? [];
   const subjectDisplay =
@@ -165,14 +163,14 @@ function InvoiceModal({
     recipientName: post.guardian,
     recipientPhone: post.guardianPhone,
     recipientAddress: post.location,
-    invoiceDate: today,
-    dueDate: due,
+    invoiceDate: "",
+    dueDate: "",
     itemName: `${subjectDisplay} - Class ${classDisplay}`,
     itemDescription: `${post.classType} tutoring | ${post.frequency} days/week | ${boardDisplay} board`,
     unitAmount: post.budget ?? 0,
     notes: "",
     paymentStatus: "unpaid",
-    paymentDate: today,
+    paymentDate: "",
     partialMode: "amount",
     partialAmount: "",
     partialPct: "",
@@ -180,6 +178,17 @@ function InvoiceModal({
     teacherName: "",
     teacherPhone: "",
   });
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const due = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+    setForm((prev) => ({
+      ...prev,
+      invoiceDate: prev.invoiceDate || today,
+      dueDate: prev.dueDate || due,
+      paymentDate: prev.paymentDate || today,
+    }));
+  }, []);
 
   const [fetchingTeacher, setFetchingTeacher] = useState(true);
 
