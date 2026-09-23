@@ -32,7 +32,7 @@ import {
   MapPin,
   CheckCircle,
 } from "lucide-react";
-import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
+
 import { z } from "zod";
 import Stepper, { Step } from "@/components/reactbits/ui/Stepper";
 import { ReferralPicker, type ReferralOption } from "@/components/admin/referral-picker";
@@ -314,9 +314,17 @@ export default function TuitionPostForm({
   const [extraSubjects, setExtraSubjects] = useState<
     { _id: string; key: string; label: string }[]
   >([]);
+  const [extraClasses, setExtraClasses] = useState<
+    { _id: string; key: string; label: string }[]
+  >([]);
+  const [extraBoards, setExtraBoards] = useState<
+    { _id: string; key: string; label: string }[]
+  >([]);
   const [referralOptions, setReferralOptions] = useState<ReferralOption[]>([]);
   const [isSourceManagerOpen, setIsSourceManagerOpen] = useState(false);
   const [isSubjectManagerOpen, setIsSubjectManagerOpen] = useState(false);
+  const [isClassManagerOpen, setIsClassManagerOpen] = useState(false);
+  const [isBoardManagerOpen, setIsBoardManagerOpen] = useState(false);
 
   const combinedSources = useMemo(() => {
     const map = new Map<string, string>();
@@ -335,6 +343,37 @@ export default function TuitionPostForm({
     });
     return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
   }, [extraSubjects]);
+
+  const combinedClasses = useMemo(() => {
+    const map = new Map<string, string>();
+    classes.forEach((c) => map.set(c.key, c.label));
+    extraClasses.forEach((c) => {
+      if (!map.has(c.key)) map.set(c.key, c.label);
+    });
+    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+  }, [extraClasses]);
+
+  const combinedBoards = useMemo(() => {
+    const map = new Map<string, string>();
+    boards.forEach((b) => map.set(b.key, b.label));
+    extraBoards.forEach((b) => {
+      if (!map.has(b.key)) map.set(b.key, b.label);
+    });
+    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+  }, [extraBoards]);
+
+  /**
+   * Resolve a stored DB value (may be a key OR a label from old/new posts)
+   * back to the Select key. Checks key match first, then label match.
+   */
+  const resolveClassKey = (value: string) =>
+    combinedClasses.find((c) => c.key === value || c.label === value)?.key ?? value;
+
+  const resolveBoardKey = (value: string) =>
+    combinedBoards.find((b) => b.key === value || b.label === value)?.key ?? value;
+
+  const resolveSubjectKey = (value: string) =>
+    combinedSubjects.find((s) => s.key === value || s.label === value)?.key ?? value;
 
   const loadSources = async () => {
     try {
@@ -366,6 +405,44 @@ export default function TuitionPostForm({
             _id: s._id,
             key: s.key,
             label: s.label,
+          })),
+        );
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadClasses = async () => {
+    try {
+      const res = await fetch(`/api/v1/admin/classes`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.classes)) {
+        setExtraClasses(
+          data.classes.map((c: any) => ({
+            _id: c._id,
+            key: c.key,
+            label: c.label,
+          })),
+        );
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadBoards = async () => {
+    try {
+      const res = await fetch(`/api/v1/admin/boards`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.boards)) {
+        setExtraBoards(
+          data.boards.map((b: any) => ({
+            _id: b._id,
+            key: b.key,
+            label: b.label,
           })),
         );
       }
@@ -439,6 +516,8 @@ export default function TuitionPostForm({
   useEffect(() => {
     loadSources();
     loadSubjects();
+    loadClasses();
+    loadBoards();
     loadReferrals();
   }, []);
 
@@ -725,11 +804,18 @@ export default function TuitionPostForm({
       return;
     }
     try {
-      // Map students: each entry becomes a student with subjects as single-item array
+      // Build key → label lookup maps so the DB stores human-readable labels,
+      // not internal keys. This ensures share messages, cards, and detail pages
+      // all show correct text without any extra lookup.
+      const classLabelMap = new Map(combinedClasses.map(({ key, label }) => [key, label]));
+      const boardLabelMap = new Map(combinedBoards.map(({ key, label }) => [key, label]));
+      const subjectLabelMap = new Map(combinedSubjects.map(({ key, label }) => [key, label]));
+
+      // Map students: resolve keys to labels
       const mappedStudents = formData.students.map((s) => ({
-        className: s.class.trim(),
-        board: s.board.trim(),
-        subjects: s.subjects,
+        className: classLabelMap.get(s.class.trim()) ?? s.class.trim(),
+        board: boardLabelMap.get(s.board.trim()) ?? s.board.trim(),
+        subjects: s.subjects.map((sub) => subjectLabelMap.get(sub) ?? sub),
       }));
 
       const payload: Record<string, unknown> = {
@@ -1034,50 +1120,70 @@ export default function TuitionPostForm({
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Autocomplete
+                        <Select
                           label="Class"
-                          placeholder="Search class"
-                          selectedKey={student.class}
-                          onSelectionChange={(key) =>
-                            handleStudentChange(index, "class", key as string)
+                          placeholder="Select class"
+                          selectedKeys={
+                            student.class
+                              ? new Set([resolveClassKey(student.class)])
+                              : new Set<string>()
                           }
+                          onSelectionChange={(keys) => {
+                            const value = Array.from(keys)[0] as string | undefined;
+                            if (!value) return;
+                            if (value === ADD_NEW_VALUE) {
+                              setIsClassManagerOpen(true);
+                              return;
+                            }
+                            handleStudentChange(index, "class", value);
+                          }}
                           isRequired
                           isInvalid={!!errors[`students.${index}.class`]}
                           errorMessage={errors[`students.${index}.class`]}
                           variant="bordered"
                         >
-                          {classes.map((cls) => (
-                            <AutocompleteItem key={cls.key}>
+                          {[{ key: ADD_NEW_VALUE, label: "➕ Add new option" }, ...combinedClasses].map((cls) => (
+                            <SelectItem key={cls.key}>
                               {cls.label}
-                            </AutocompleteItem>
+                            </SelectItem>
                           ))}
-                        </Autocomplete>
+                        </Select>
 
-                        <Autocomplete
+                        <Select
                           label="Board"
-                          placeholder="Search board"
-                          selectedKey={student.board}
-                          onSelectionChange={(key) =>
-                            handleStudentChange(index, "board", key as string)
+                          placeholder="Select board"
+                          selectedKeys={
+                            student.board
+                              ? new Set([resolveBoardKey(student.board)])
+                              : new Set<string>()
                           }
+                          onSelectionChange={(keys) => {
+                            const value = Array.from(keys)[0] as string | undefined;
+                            if (!value) return;
+                            if (value === ADD_NEW_VALUE) {
+                              setIsBoardManagerOpen(true);
+                              return;
+                            }
+                            handleStudentChange(index, "board", value);
+                          }}
                           isRequired
                           isInvalid={!!errors[`students.${index}.board`]}
                           errorMessage={errors[`students.${index}.board`]}
                           variant="bordered"
                         >
-                          {boards.map((board) => (
-                            <AutocompleteItem key={board.key}>
+                          {[{ key: ADD_NEW_VALUE, label: "➕ Add new option" }, ...combinedBoards].map((board) => (
+                            <SelectItem key={board.key}>
                               {board.label}
-                            </AutocompleteItem>
+                            </SelectItem>
                           ))}
-                        </Autocomplete>
+                        </Select>
 
                         <Select
                           selectionMode="multiple"
                           label="Subjects"
                           placeholder="Select subjects"
                           maxListboxHeight={400}
-                          selectedKeys={new Set(student.subjects)}
+                          selectedKeys={new Set(student.subjects.map(resolveSubjectKey))}
                           onSelectionChange={(keys) => {
                             const vals = Array.from(keys) as string[];
                             if (vals.includes(ADD_NEW_VALUE)) {
@@ -1540,6 +1646,24 @@ export default function TuitionPostForm({
         isOpen={isSubjectManagerOpen}
         onClose={() => setIsSubjectManagerOpen(false)}
         onRefresh={loadSubjects}
+      />
+
+      <OptionManagerModal
+        title="Classes"
+        endpoint="/api/v1/admin/classes"
+        items={extraClasses}
+        isOpen={isClassManagerOpen}
+        onClose={() => setIsClassManagerOpen(false)}
+        onRefresh={loadClasses}
+      />
+
+      <OptionManagerModal
+        title="Boards"
+        endpoint="/api/v1/admin/boards"
+        items={extraBoards}
+        isOpen={isBoardManagerOpen}
+        onClose={() => setIsBoardManagerOpen(false)}
+        onRefresh={loadBoards}
       />
 
       {/* Add Student Modal */}
