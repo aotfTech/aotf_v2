@@ -781,6 +781,7 @@ const Page = () => {
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
+    let requestEndpoint = "/api/v1/posts";
     try {
       const params = new URLSearchParams();
       params.set("limit", pagination.limit.toString());
@@ -801,7 +802,11 @@ const Page = () => {
         );
       }
       
-      const res = await fetch(`/api/v1/posts?${params.toString()}`);
+      requestEndpoint = `/api/v1/posts?${params.toString()}`;
+      const res = await fetch(requestEndpoint, {
+        // Avoid replaying a stale failed response while diagnosing this page.
+        cache: "no-store",
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `Failed to fetch posts (${res.status})`);
@@ -818,7 +823,15 @@ const Page = () => {
         },
       );
     } catch (err) {
-      reportClientError(err, { feature: "admin-tuitions" });
+      reportClientError(err, {
+        feature: "admin-tuitions",
+        extra: {
+          endpoint: requestEndpoint,
+          method: "GET",
+          errorName: err instanceof Error ? err.name : undefined,
+          online: typeof navigator !== "undefined" ? navigator.onLine : undefined,
+        },
+      });
       setFetchError(
         err instanceof Error ? err.message : "Failed to fetch posts",
       );
