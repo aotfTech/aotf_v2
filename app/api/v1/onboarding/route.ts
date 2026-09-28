@@ -150,9 +150,6 @@ export async function PATCH(req: Request) {
     if (Object.keys(profileUpdate).length > 0) {
       await Profile.updateOne({ clerkId }, { $set: profileUpdate });
     }
-    if (normalizedGender !== undefined) {
-      await User.updateOne({ clerkId }, { $set: { gender: normalizedGender } });
-    }
 
     console.log(`[onboarding] Upserted onboarding details for ${clerkId}`);
 

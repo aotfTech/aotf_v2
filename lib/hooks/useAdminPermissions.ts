@@ -10,7 +10,7 @@ import { useMemo } from "react";
 export function useAdminPermissions() {
   const { user, isLoaded } = useUser();
 
-  const permissions = useMemo(() => {
+  const permissions = useMemo<Record<string, boolean>>(() => {
     if (!isLoaded || !user) return {};
 
     const metadata = (user.publicMetadata ?? {}) as Record<string, unknown>;

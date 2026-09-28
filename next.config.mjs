@@ -117,7 +117,7 @@ export default withSentryConfig(nextConfig, {
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
   org: "aotf",
-  project: "javascript-nextjs",
+  project: "aotf-v2",
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,

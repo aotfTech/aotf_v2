@@ -13,6 +13,12 @@ import {
 Sentry.init({
   dsn: sentryDsn,
 
+  integrations: [
+    Sentry.consoleLoggingIntegration({
+      levels: ["log", "warn", "error"],
+    }),
+  ],
+
   tracesSampleRate: sentryTracesSampleRate,
 
   enableLogs: true,

@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document, Model, models } from "mongoose";
-import { sourceLists } from "@/lib/validations/forms";
 
 // ─── Enums ──────────────────────────────────────────────────────────────
 
@@ -35,8 +34,6 @@ const StudentSchema = new Schema<IStudent>(
   },
   { _id: false },
 );
-
-const sourceEnumValues = sourceLists.map((source) => source.key);
 
 // ─── Main Document: Post ────────────────────────────────────────────────
 
@@ -76,7 +73,6 @@ const PostSchema = new Schema<IPost>(
     guardianPhone: { type: String, required: true },
     source: {
       type: String,
-      enum: sourceEnumValues,
       required: true,
     },
     students: {
@@ -135,7 +131,6 @@ if (!Post.schema.path("source")) {
   Post.schema.add({
     source: {
       type: String,
-      enum: sourceEnumValues,
       required: true,
     },
   });

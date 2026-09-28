@@ -50,7 +50,7 @@ const isAdminApiRoute = createRouteMatcher([
 ]);
 const isEnquiryApiRoute = createRouteMatcher(["/api/v1/enquiry(.*)"]);
 
-const isOnboardingRoute = createRouteMatcher(["/onboarding"]);
+const isOnboardingRoute = createRouteMatcher(["/onboarding", "/welcome"]);
 // API routes called during onboarding — must be reachable before onboarding is complete
 const isOnboardingApiRoute = createRouteMatcher([
   "/api/v1/profile(.*)",
@@ -58,6 +58,24 @@ const isOnboardingApiRoute = createRouteMatcher([
   "/api/v1/payments(.*)",
   "/api/v1/users(.*)",
   "/api/v1/feedback(.*)", // Admin-only route, skip onboarding check (API handles auth)
+]);
+
+// Routes that logged-in but not-yet-onboarded users are allowed to access
+const isIgnoredByOnboarding = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/sso-callback(.*)",
+  "/verify(.*)",
+  "/api/v1/webhooks(.*)",
+  "/api/v1/subjects(.*)", // Needed for the profile/onboarding form
+  "/about(.*)",
+  "/contact(.*)",
+  "/privacy-policy(.*)",
+  "/refund-policy(.*)",
+  "/terms(.*)",
+  "/services(.*)",
+  "/docs(.*)",
+  "/api/search(.*)",
 ]);
 // ─── Clerk middleware instance ───────────────────────────────────────
 
@@ -100,10 +118,10 @@ const middleware = clerkMiddleware(async (auth, req) => {
   const onboardingRequiredResponse = () =>
     isApiRequest
       ? NextResponse.json(
-          { error: "Onboarding required", redirectTo: "/onboarding" },
+          { error: "Onboarding required", redirectTo: "/welcome" },
           { status: 403 },
         )
-      : NextResponse.redirect(new URL("/onboarding", req.url));
+      : NextResponse.redirect(new URL("/welcome", req.url));
 
   // Debug logging for API routes
   if (pathname === "/api/v1/posts") {
@@ -151,7 +169,7 @@ const middleware = clerkMiddleware(async (auth, req) => {
         );
       }
       // Payment not completed yet — send to onboarding
-      return NextResponse.redirect(new URL("/onboarding", req.url));
+      return NextResponse.redirect(new URL("/welcome", req.url));
     } catch (err) {
       reportError(err, {
         tags: { layer: "proxy" },
@@ -164,7 +182,7 @@ const middleware = clerkMiddleware(async (auth, req) => {
 
   // 1. Admin route guard
   // Track if user is an admin to skip onboarding checks later
-  let isUserAdmin = false;
+  let isUserAdmin = meta?.isAdmin === true || meta?.role === "admin";
 
   const shouldResolveAdminStatus =
     userId && (isProtectedAdminRequest || isOnboardingRoute(req) || isOnboardingApiRoute(req));
@@ -336,7 +354,7 @@ const middleware = clerkMiddleware(async (auth, req) => {
   // Short-circuit onboarding requests for admins to avoid repeated client/server
   // calls when an admin is signed in. This prevents page POSTs to `/onboarding`
   // and API calls to `/api/v1/onboarding` from being processed.
-  if (isUserAdmin && (pathname === "/api/v1/onboarding" || pathname === "/onboarding")) {
+  if (isUserAdmin && (pathname === "/api/v1/onboarding" || pathname === "/onboarding" || pathname === "/welcome")) {
     if (isApiRequest || pathname.startsWith("/api/")) {
       return NextResponse.json(
         { ok: true, message: "Onboarding skipped for admin" },
@@ -369,7 +387,7 @@ const middleware = clerkMiddleware(async (auth, req) => {
   if (
     userId &&
     !isUserAdmin &&
-    !isPublicRoute(req) &&
+    !isIgnoredByOnboarding(req) &&
     !isAdminRoute(req) &&
     !isAdminApiRoute(req) &&
     !isOnboardingRoute(req) &&
@@ -385,6 +403,32 @@ const middleware = clerkMiddleware(async (auth, req) => {
       // publicMetadata update propagates). Check the DB as the source of truth.
       try {
         await dbConnect();
+
+        // Ensure we haven't falsely trapped an admin due to missing JWT metadata
+        // on a route where shouldResolveAdminStatus was false (e.g. public routes).
+        let adminDoc = await Admin.findOne({ clerkId: userId }, { _id: 1 }).lean();
+        if (!adminDoc) {
+          // Fallback for new admin invite system
+          const AdminUser = require("@/lib/models/admin/AdminUser").default;
+          adminDoc = await AdminUser.findOne({ clerkUserId: userId }, { _id: 1 }).lean();
+        }
+        
+        let isClerkAdmin = false;
+        if (!adminDoc) {
+          try {
+            const client = await clerkClient();
+            const clerkUser = await client.users.getUser(userId);
+            if (clerkUser.publicMetadata?.isAdmin === true || clerkUser.publicMetadata?.role === "admin") {
+              isClerkAdmin = true;
+            }
+          } catch (e) {}
+        }
+
+        if (adminDoc || isClerkAdmin) {
+          isUserAdmin = true;
+          return NextResponse.next();
+        }
+
         const userDoc = await User.findOne(
           { clerkId: userId },
           { onboardingCompleted: 1 },

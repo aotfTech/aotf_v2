@@ -58,11 +58,6 @@ const userSchema = new Schema(
       default: "teacher",
       required: true,
     },
-    gender: {
-      type: String,
-      enum: ["male", "female", "other", null],
-      default: null,
-    },
     hasTuitionAccess: { type: Boolean, default: false },
     hasCandidateAccess: { type: Boolean, default: false },
     createdByAdmin: { type: Boolean, default: false },

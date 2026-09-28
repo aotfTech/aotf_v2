@@ -186,7 +186,11 @@ export default function Onboarding() {
           }
         },
       )
-      .catch(() => {
+      .catch((err) => {
+        reportClientError(err, {
+          feature: "onboarding",
+          extra: { step: "initial-load" },
+        });
         /* silently ignore — form stays empty */
       })
       .finally(() => {
@@ -348,6 +352,10 @@ export default function Onboarding() {
       }
       setProfileSaved(true);
     } catch (err) {
+      reportClientError(err, {
+        feature: "onboarding",
+        extra: { step: "profile-details" },
+      });
       setSaveError(
         err instanceof Error ? err.message : "Failed to save your details.",
       );
@@ -412,6 +420,10 @@ export default function Onboarding() {
           savedData.whatsappGroupCompleted ?? prev.whatsappGroupCompleted,
       }));
     } catch (err) {
+      reportClientError(err, {
+        feature: "onboarding",
+        extra: { step: "onboarding-details" },
+      });
       setOnboardingDetailsError(
         err instanceof Error ? err.message : "Failed to save your details.",
       );
