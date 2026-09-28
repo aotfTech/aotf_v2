@@ -263,6 +263,13 @@ export default function Onboarding() {
   const [paymentPaidButNotOnboarded, setPaymentPaidButNotOnboarded] =
     useState(false);
 
+  // Redirect to step 2 if on step 3 without a plan selected
+  useEffect(() => {
+    if (currentStep === 3 && !formData.plan && stepperReady) {
+      setCurrentStep(2);
+    }
+  }, [currentStep, formData.plan, stepperReady]);
+
   // ─── Handlers ─────────────────────────────────────────────────────
 
   const handleChange = (
@@ -334,9 +341,9 @@ export default function Onboarding() {
         const data = await res.json().catch(() => ({}));
         throw new Error(
           (data as { error?: string }).error ??
-            (res.status === 404
-              ? "Your account is still being set up. Please wait a moment and try again."
-              : "Failed to save details. Please try again."),
+          (res.status === 404
+            ? "Your account is still being set up. Please wait a moment and try again."
+            : "Failed to save details. Please try again."),
         );
       }
       setProfileSaved(true);
@@ -386,9 +393,9 @@ export default function Onboarding() {
         const data = await res.json().catch(() => ({}));
         throw new Error(
           (data as { error?: string }).error ??
-            (res.status === 404
-              ? "Your account is still being set up. Please wait a moment and try again."
-              : "Failed to save details. Please try again."),
+          (res.status === 404
+            ? "Your account is still being set up. Please wait a moment and try again."
+            : "Failed to save details. Please try again."),
         );
       }
       const savedData = (await res.json()) as {
@@ -534,7 +541,7 @@ export default function Onboarding() {
                 const d = await verifyRes.json().catch(() => ({}));
                 throw new Error(
                   (d as { error?: string }).error ??
-                    "Payment verification failed",
+                  "Payment verification failed",
                 );
               }
               await user.reload();
@@ -678,7 +685,7 @@ export default function Onboarding() {
         {!paymentPaidButNotOnboarded && (
           <>
             {/* ── Auto-deletion warning ────────────────────────── */}
-            {deletionDeadline && countdown && (
+            {/* {deletionDeadline && countdown && (
               <div className="mb-2 p-4 rounded-xl bg-warning-50 border border-warning-300 text-warning-800 text-sm space-y-1">
                 <p className="font-semibold">
                   ⚠️ Account scheduled for deletion
@@ -689,7 +696,7 @@ export default function Onboarding() {
                 </p>
                 <p className="font-mono font-bold tracking-wide">{countdown}</p>
               </div>
-            )}
+            )} */}
             {onboardingFlags.createdByAdmin &&
               onboardingFlags.paymentCompleted && (
                 <div className="mb-4 rounded-xl border border-success-200 bg-success-50 p-4 text-center text-sm text-success-700">
