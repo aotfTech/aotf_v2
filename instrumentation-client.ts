@@ -14,6 +14,13 @@ import {
 Sentry.init({
   dsn: sentryDsn,
 
+  ignoreErrors: [
+    "TypeError: Failed to fetch",
+    "TypeError: network error",
+    "Failed to fetch",
+    "network error",
+  ],
+
   integrations: [
     Sentry.consoleLoggingIntegration({
       levels: ["log", "warn", "error"],
@@ -22,7 +29,7 @@ Sentry.init({
       // Admin replay text is useful when diagnosing data-loading failures. Keep
       // input values masked because this page can contain user-entered data.
       maskAllText: false,
-      maskAllInputs: true,
+      maskAllInputs: false,
 
       // Capture detailed network information only for the posts API. This
       // includes request/response bodies and the explicitly allow-listed
