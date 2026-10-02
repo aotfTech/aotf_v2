@@ -10,9 +10,9 @@ interface GenderFieldProps {
 }
 
 export const GENDER_OPTIONS = [
-  { value: "Male", label: "Male" },
-  { value: "Female", label: "Female" },
-  { value: "Other", label: "Other" },
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "other", label: "Other" },
 ];
 
 export default function GenderField({ value, onChange }: GenderFieldProps) {
@@ -24,7 +24,7 @@ export default function GenderField({ value, onChange }: GenderFieldProps) {
       label="Gender"
       placeholder="Select Gender"
       isRequired
-      selectedKeys={value ? [value] : []}
+      selectedKeys={value ? [value.toLowerCase()] : []}
       isInvalid={!!error}
       errorMessage={error}
       onSelectionChange={(keys) => {
@@ -41,3 +41,4 @@ export default function GenderField({ value, onChange }: GenderFieldProps) {
     </Select>
   );
 }
+

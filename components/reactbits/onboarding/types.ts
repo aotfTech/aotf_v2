@@ -16,7 +16,7 @@ export const PLANS = [
     },
     {
         value: "teacher_candidate",
-        label: "Teacher & Candidate Plan",
+        label: "Teacher + Freelancers Plan",
         amount: 9900,
         display: "₹99",
         description: "Full access: tuition posts + job/project applications.",

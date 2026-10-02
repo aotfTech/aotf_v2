@@ -2,6 +2,7 @@
 
 import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
+import { CreditCard, Sparkles } from "lucide-react";
 import { PLANS, type PlanValue } from "./types";
 
 interface PaymentStepProps {
@@ -49,17 +50,33 @@ export default function PaymentStep({
 
       {/* ── Normal plan summary (only for non-migrated users) ─────────── */}
       {!isLegacyMigrated && selectedPlan && (
-        <Card>
-          <CardBody className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-default-500">Plan</span>
-              <span className="font-medium">{selectedPlan.label}</span>
+        <Card className="border border-default-200 bg-background/60 backdrop-blur-md shadow-sm">
+          <CardBody className="p-5">
+            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-default-100">
+              <div className="p-2.5 rounded-full bg-primary/10 text-primary">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Order Summary</h3>
+                <p className="text-xs text-default-500">Review your plan details</p>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-default-500">Amount</span>
-              <span className="font-semibold text-base">
-                {selectedPlan.display} / month
-              </span>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-default-500">Plan</span>
+                <span className="font-medium text-foreground">{selectedPlan.label}</span>
+              </div>
+              <div className="flex justify-between items-start text-sm pt-2 border-t border-default-100">
+                <span className="text-default-500 mt-1">Amount</span>
+                <div className="flex flex-col items-end">
+                  <span className="font-bold text-xl text-foreground leading-none">
+                    {selectedPlan.display}
+                  </span>
+                  <span className="text-[10px] font-medium text-success-600 bg-success-50 dark:bg-success-500/10 dark:text-success-500 px-2 py-0.5 rounded-full mt-1.5 border border-success-200 dark:border-success-500/20">
+                    One-time payment
+                  </span>
+                </div>
+              </div>
             </div>
           </CardBody>
         </Card>
@@ -78,18 +95,28 @@ export default function PaymentStep({
       <Button
         fullWidth
         color={isLegacyMigrated ? "primary" : "success"}
+        className={
+          isLegacyMigrated
+            ? ""
+            : "bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-lg shadow-emerald-500/30 font-medium border-0"
+        }
         size="lg"
         isLoading={isPaymentLoading || isSavingDetails}
         isDisabled={!selectedPlan || isPaymentLoading || isSavingDetails}
         onPress={onPay}
       >
-        {isPaymentLoading
-          ? "Activating…"
-          : isSavingDetails
-            ? "Please wait…"
-            : isLegacyMigrated
-              ? "Activate Account"
-              : `Pay ${selectedPlan?.display ?? ""}`}
+        {isPaymentLoading ? (
+          "Activating…"
+        ) : isSavingDetails ? (
+          "Please wait…"
+        ) : isLegacyMigrated ? (
+          "Activate Account"
+        ) : (
+          <span className="flex items-center gap-2">
+            Pay {selectedPlan?.display ?? ""}
+            <Sparkles className="w-4 h-4" />
+          </span>
+        )}
       </Button>
     </div>
   );
