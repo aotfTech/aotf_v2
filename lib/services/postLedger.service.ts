@@ -34,25 +34,25 @@ export const TUITIONS_HEADERS = [
   "Referrer Phone",     // I
   "Requirement",        // J
   "Notes",              // K
-  "Paid?",              // K
-  "Payment Date",       // L
-  "Teacher Assigned?",  // M
-  "Teacher Name",       // N
-  "Teacher Phone",      // O
-  "Teacher Gender",     // P
-  "Assigned Teacher Status", // Q
-  "Teacher Demo Date",  // R
-  "Starting Date",      // S
-  "Teacher Paid?",      // T
-  "Teacher Payment Date", // U
-  "Invoice?",           // V
-  "Invoice ID",         // W
-  "Class Type",         // X
-  "Location",           // Y
-  "Monthly Budget",     // Z
-  "Post Status",        // AA
-  "Last Updated At",    // AB
-  "Processed By Admin", // AC
+  "Paid?",              // L
+  "Payment Date",       // M
+  "Teacher Assigned?",  // N
+  "Teacher Name",       // O
+  "Teacher Phone",      // P
+  "Teacher Gender",     // Q
+  "Assigned Teacher Status", // R
+  "Teacher Demo Date",  // S
+  "Starting Date",      // T
+  "Teacher Paid?",      // U
+  "Teacher Payment Date", // V
+  "Invoice?",           // W
+  "Invoice ID",         // X
+  "Class Type",         // Y
+  "Location",           // Z
+  "Monthly Budget",     // AA
+  "Post Status",        // AB
+  "Last Updated At",    // AC
+  "Processed By Admin", // AD
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -71,43 +71,42 @@ interface IProfileSnapshot {
 
 interface IPostLedgerUpsertData {
   serialNumber: number | null;
-  postId: string;
   postCreatedAt: Date;
-  enquiryId: string | null;
+  postId: string;
+  cancelledOrNot: boolean;
   guardianName: string;
   guardianPhone: string;
-  students: IPostLedgerStudent[];
-  classType: string;
-  location: string;
-  monthlyBudget: number;
-  notes: string | null;
-  postStatus: PostLedgerStatus;
-  assignedTeacherId: string | null;
-  assignedTeacherUsername: string | null;
-  assignedTeacherName: string | null;
-  assignedTeacherPhone: string | null;
-  assignedAt: Date | null;
-  processedByAdminClerkId: string | null;
-  processedByAdminName: string | null;
-  // New fields
-  assignedTeacherStatus: string | null;
   source: string | null;
   referrerName: string | null;
   referrerPhone: string | null;
-  cancelledOrNot: boolean;
   requirement: string | null;
+  notes: string | null;
+  paymentStatus: PaymentStatus;
+  paymentDate: Date | null;
+  assignedTeacherId: string | null;
+  assignedTeacherName: string | null;
+  assignedTeacherPhone: string | null;
   teacherGender: string | null;
+  assignedTeacherStatus: string | null;
   teacherDemoDate: Date | null;
   startingDate: Date | null;
   teacherHasBeenPaid: boolean;
   teacherPaymentDate: Date | null;
   invoiceGenerated: boolean;
   invoiceId: string | null;
-  // Guardian payment
-  paymentStatus: PaymentStatus;
-  paymentDate: Date | null;
-  paymentAmount: number | null;
+  classType: string;
+  location: string;
+  monthlyBudget: number;
+  postStatus: PostLedgerStatus;
   lastUpdatedAt: Date;
+  processedByAdminName: string | null;
+  // Other DB-only fields
+  processedByAdminClerkId: string | null;
+  enquiryId: string | null;
+  students: IPostLedgerStudent[];
+  assignedTeacherUsername: string | null;
+  assignedAt: Date | null;
+  paymentAmount: number | null;
   sheetRowIndex: number | null;
   statusHistory: IPostLedgerStatusHistoryEntry[];
   teacherChangeCount: number;
@@ -212,64 +211,64 @@ export function postLedgerToSheetRowValues(
     // J: Requirement
     ledger.requirement ?? "",
 
-    // J: Notes
+    // K: Notes
     ledger.notes ?? "",
 
-    // K: Paid?
+    // L: Paid?
     ledger.paymentStatus,
 
-    // L: Payment Date
+    // M: Payment Date
     formatDateOnlyIST(ledger.paymentDate),
 
-    // M: Teacher Assigned?
+    // N: Teacher Assigned?
     ledger.assignedTeacherId ? "YES" : "NO",
 
-    // N: Teacher Name
+    // O: Teacher Name
     ledger.assignedTeacherName ?? "",
 
-    // O: Teacher Phone
+    // P: Teacher Phone
     ledger.assignedTeacherPhone ?? "",
 
-    // P: Teacher Gender
+    // Q: Teacher Gender
     ledger.teacherGender ?? "",
 
-    // Q: Assigned Teacher Status
+    // R: Assigned Teacher Status
     ledger.assignedTeacherStatus ?? "",
 
-    // R: Teacher Demo Date
+    // S: Teacher Demo Date
     formatDateIST(ledger.teacherDemoDate),
 
-    // S: Starting Date
+    // T: Starting Date
     formatDateIST(ledger.startingDate),
 
-    // T: Teacher Paid?
+    // U: Teacher Paid?
     ledger.teacherHasBeenPaid ? "YES" : "NO",
 
-    // U: Teacher Payment Date
+    // V: Teacher Payment Date
     formatDateIST(ledger.teacherPaymentDate),
 
-    // V: Invoice?
+    // W: Invoice?
     ledger.invoiceGenerated ? "YES" : "NO",
 
-    // W: Invoice ID
+    // X: Invoice ID
     ledger.invoiceId ?? "",
 
-    // X: Class Type
+    // Y: Class Type
     ledger.classType,
 
-    // Y: Location
+    // Z: Location
     ledger.location,
 
-    // Z: Monthly Budget
+    // AA: Monthly Budget
     ledger.monthlyBudget,
 
-    // AA: Post Status
+    // AB: Post Status
     ledger.postStatus,
 
-    // AB: Last Updated At
+    // AC: Last Updated At
     formatDateIST(ledger.lastUpdatedAt),
 
-    // AC: Processed By Admin (fallback to clerk id if name is missing)
+    // AD: Processed By Admin (fallback to clerk id if name is missing)
     ledger.processedByAdminName || ledger.processedByAdminClerkId || "",
   ];
 }
@@ -545,41 +544,42 @@ export async function upsertPostLedger(postId: string): Promise<IPostLedger> {
 
   const ledgerData: IPostLedgerUpsertData = {
     serialNumber: serialNumberFinal,
-    postId: post.postId,
     postCreatedAt: post.createdAt,
-    enquiryId: post.enquiryId ? post.enquiryId.toString() : null,
+    postId: post.postId,
+    cancelledOrNot,
     guardianName: post.guardianName,
     guardianPhone: post.guardianPhone,
-    students: post.students as IPostLedgerStudent[],
-    classType: post.classType,
-    location: post.location,
-    monthlyBudget: post.monthlyBudget,
-    notes: post.notes ?? null,
-    postStatus: postLedgerStatus,
-    assignedTeacherId,
-    assignedTeacherUsername,
-    assignedTeacherName,
-    assignedTeacherPhone,
-    assignedAt,
-    processedByAdminClerkId,
-    processedByAdminName,
-    assignedTeacherStatus,
     source,
     referrerName,
     referrerPhone,
-    cancelledOrNot,
     requirement,
+    notes: post.notes ?? null,
+    paymentStatus,
+    paymentDate,
+    assignedTeacherId,
+    assignedTeacherName,
+    assignedTeacherPhone,
     teacherGender,
+    assignedTeacherStatus,
     teacherDemoDate,
     startingDate,
     teacherHasBeenPaid,
     teacherPaymentDate,
     invoiceGenerated,
     invoiceId,
-    paymentStatus,
-    paymentDate,
-    paymentAmount,
+    classType: post.classType,
+    location: post.location,
+    monthlyBudget: post.monthlyBudget,
+    postStatus: postLedgerStatus,
     lastUpdatedAt: new Date(),
+    processedByAdminName,
+    // Other DB-only fields
+    processedByAdminClerkId,
+    enquiryId: post.enquiryId ? post.enquiryId.toString() : null,
+    students: post.students as IPostLedgerStudent[],
+    assignedTeacherUsername,
+    assignedAt,
+    paymentAmount,
     sheetRowIndex,
     statusHistory,
     teacherChangeCount,
