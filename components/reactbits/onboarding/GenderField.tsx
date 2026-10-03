@@ -1,6 +1,6 @@
 "use client";
 
-import { Select, SelectItem } from "@heroui/select";
+import { RadioGroup, Radio } from "@heroui/radio";
 import { useState } from "react";
 import { validateField } from "./types";
 
@@ -20,25 +20,23 @@ export default function GenderField({ value, onChange }: GenderFieldProps) {
   const error = touched ? validateField("gender", value) : null;
 
   return (
-    <Select
+    <RadioGroup
       label="Gender"
-      placeholder="Select Gender"
       isRequired
-      selectedKeys={value ? [value.toLowerCase()] : []}
+      value={value ? value.toLowerCase() : ""}
       isInvalid={!!error}
       errorMessage={error}
-      onSelectionChange={(keys) => {
-        const selected = Array.from(keys)[0] as string;
-        onChange(selected || "");
+      onValueChange={(val) => {
+        onChange(val);
+        setTouched(true);
       }}
-      onClose={() => setTouched(true)}
+      orientation="horizontal"
     >
       {GENDER_OPTIONS.map((opt) => (
-        <SelectItem key={opt.value}>
+        <Radio key={opt.value} value={opt.value}>
           {opt.label}
-        </SelectItem>
+        </Radio>
       ))}
-    </Select>
+    </RadioGroup>
   );
 }
-
