@@ -19,7 +19,7 @@ interface DateChipsProps {
 function buildChips(): { label: string; value: string }[] {
   const chips: { label: string; value: string }[] = [];
   const today = new Date();
-  const count = 15; // number of days to show
+  const count = 60; // number of days to show (~2 months)
   for (let i = 1; i <= count; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - i); // past dates
